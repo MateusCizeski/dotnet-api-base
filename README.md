@@ -1,4 +1,4 @@
-# ApiBase – Framework modular para ASP.NET Core
+# dotnet-api-base – Framework modular para ASP.NET Core
 
 [![NuGet](https://img.shields.io/badge/NuGet-MateusCizeski-%23004880)](https://www.nuget.org/packages?q=MateusCizeski&includeComputedFrameworks=true&prerel=true)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
