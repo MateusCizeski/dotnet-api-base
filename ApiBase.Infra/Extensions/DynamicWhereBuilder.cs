@@ -15,7 +15,9 @@ namespace ApiBase.Infra.Extensions
         public IQueryable<T> Build<T>(IQueryable<T> query, List<FilterGroup> filterGroups)
         {
             if (filterGroups == null || !filterGroups.Any())
+            {
                 return query;
+            }
 
             var parameter = Expression.Parameter(typeof(T), "x");
             Expression finalExpression = null;

@@ -67,9 +67,7 @@ namespace ApiBase.Infra.Query
             }
 
             if (propertyType == typeof(string))
-            {
                 expression = Expression.Call(expression, "ToLower", null);
-            }
 
             var condition = Expression.Condition(
                 Expression.Equal(expression, Expression.Constant(convertedFilter)),

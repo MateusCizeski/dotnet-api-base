@@ -89,6 +89,7 @@ namespace ApiBase.Infra.Query
         {
             if (string.IsNullOrWhiteSpace(Filter))
                 return null;
+            }
 
             try
             {
@@ -124,6 +125,7 @@ namespace ApiBase.Infra.Query
         {
             if (string.IsNullOrWhiteSpace(Sort))
                 return null;
+            }
 
             try
             {

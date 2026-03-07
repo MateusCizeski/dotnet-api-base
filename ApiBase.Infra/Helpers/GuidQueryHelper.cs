@@ -90,6 +90,7 @@ namespace ApiBase.Infra.Helpers
         public List<SortModel> BuildOrderBy<T>(QueryParams queryParams)
         {
             var sortList = queryParams.GetSort();
+            
             if (sortList != null && sortList.Count > 0)
             {
                 return sortList;
