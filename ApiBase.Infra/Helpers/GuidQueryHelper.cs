@@ -22,17 +22,17 @@ namespace ApiBase.Infra.Helpers
             };
         }
 
-        public GetView Page<T>(IQueryable<T> query, QueryParams queryParams)
-            where T : class
+        public GetView Page<T>(IQueryable<T> query, QueryParams queryParams) where T : class
         {
             return Page(query, queryParams, null);
         }
 
-        public GetView Page<T>(IQueryable<T> query, QueryParams queryParams, Expression<Func<T, bool>> predicate)
-            where T : class
+        public GetView Page<T>(IQueryable<T> query, QueryParams queryParams, Expression<Func<T, bool>> predicate) where T : class
         {
             if (predicate != null)
+            {
                 query = query.Where(predicate);
+            }
 
             query = ApplyQuery(query, queryParams);
             IQueryable<object> shaped = ApplyFields(query, queryParams);
@@ -44,21 +44,18 @@ namespace ApiBase.Infra.Helpers
             };
         }
 
-        public IQueryable<T> ApplyQuery<T>(IQueryable<T> query, QueryParams queryParams)
-            where T : class
+        public IQueryable<T> ApplyQuery<T>(IQueryable<T> query, QueryParams queryParams) where T : class
         {
             var sorting = BuildOrderBy<T>(queryParams);
-            var queryBuilder = new QueryBuilder<T>();
             var filters = queryParams.GetFilters();
 
-            queryBuilder.Build(query, filters, sorting);
-            return queryBuilder.Query;
+            return new QueryBuilder<T>().Build(query, filters, sorting);
         }
 
         public List<T> ExecutePagination<T>(IQueryable<T> query, QueryParams queryParams)
         {
-            int page = queryParams.page.GetValueOrDefault(1);
-            int limit = queryParams.limit.GetValueOrDefault(25);
+            int page = Math.Max(1, queryParams.page.GetValueOrDefault(1));
+            int limit = Math.Max(1, queryParams.limit.GetValueOrDefault(25));
 
             return query.Skip((page - 1) * limit).Take(limit).ToList();
         }
@@ -72,18 +69,17 @@ namespace ApiBase.Infra.Helpers
         public List<SortModel> BuildOrderBy<T>(QueryParams queryParams)
         {
             var sortList = queryParams.GetSort();
+            
             if (sortList != null && sortList.Count > 0)
+            {
                 return sortList;
+            }
 
             if (typeof(T).GetProperty("Id") != null)
             {
                 return new List<SortModel>
                 {
-                    new SortModel
-                    {
-                        property = "Id",
-                        direction = "asc"
-                    }
+                    new SortModel { Property = "Id", Direction = "asc" }
                 };
             }
 

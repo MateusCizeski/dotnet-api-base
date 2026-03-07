@@ -21,7 +21,6 @@ namespace ApiBase.Repository.Repositorys
 
         public void Dispose()
         {
-            Db.Dispose();
             GC.SuppressFinalize(this);
         }
 
@@ -75,16 +74,16 @@ namespace ApiBase.Repository.Repositorys
 
         public IQueryable<T> Get(params string[] includes)
         {
-            if (includes.Length == 0) return DbSet;
+            if (includes.Length == 0)
+            {
+                return DbSet;
+            }
 
             IQueryable<T> queryable = DbSet.AsQueryable();
 
-            if (includes != null && includes.Any())
+            foreach (var navigationPropertyPath in includes)
             {
-                foreach (string navigationPropertyPath in includes)
-                {
-                    queryable = queryable.Include(navigationPropertyPath);
-                }
+                queryable = queryable.Include(navigationPropertyPath);
             }
 
             return queryable;
@@ -92,35 +91,23 @@ namespace ApiBase.Repository.Repositorys
 
         public virtual IQueryable<T> Get(QueryParams queryParams)
         {
-            List<FilterGroup> filters = queryParams.GetFilters();
-            List<string> includes = queryParams.GetIncludes();
-            List<SortModel> order = queryParams.GetSort() ?? DefaultOrder();
+            var filters = queryParams.GetFilters();
+            var includes = queryParams.GetIncludes();
+            var order = queryParams.GetSort() ?? DefaultOrder();
             return Get(filters, order, includes.ToArray());
         }
 
         private List<SortModel> DefaultOrder()
         {
-            return new List<SortModel>()
+            return new List<SortModel>
             {
-                new SortModel
-                {
-                    property = "Id",
-                    direction = "asc"
-                }
+                new SortModel { Property = "Id", Direction = "asc" }
             };
         }
 
         public IQueryable<T> Get(List<FilterModel> filters, List<SortModel> order, params string[] includes)
         {
-            FilterGroup item = new FilterGroup
-            {
-                Filters = filters
-            };
-            List<FilterGroup> list = new List<FilterGroup>();
-
-            list.Add(item);
-
-            return Get(list, order, includes);
+            return Get(new List<FilterGroup> { new FilterGroup { Filters = filters } }, order, includes);
         }
 
         public IQueryable<T> Get(List<FilterGroup> filters, List<SortModel> order, params string[] includes)
@@ -129,16 +116,13 @@ namespace ApiBase.Repository.Repositorys
 
             if (includes != null)
             {
-                foreach (string navigationPropertyPath in includes)
+                foreach (var navigationPropertyPath in includes)
                 {
                     queryable = queryable.Include(navigationPropertyPath);
                 }
             }
 
-            QueryBuilder<T> queryBuilder = new QueryBuilder<T>();
-            queryBuilder.Build(queryable, filters, order);
-
-            return queryBuilder.Query;
+            return new QueryBuilder<T>().Build(queryable, filters, order);
         }
 
         public IQueryable<T> Where(Expression<Func<T, bool>> expression)

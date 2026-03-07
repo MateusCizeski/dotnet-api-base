@@ -1,4 +1,5 @@
 ﻿using ApiBase.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace ApiBase.Domain.Query
 {
@@ -16,9 +17,14 @@ namespace ApiBase.Domain.Query
         public const string OpEndsWith = "endswith";
         public const string OpInOrNull = "inOrNull";
 
-        public string property { get; set; }
-        public object value { get; set; }
-        public string @operator { get; set; } = OpEquals;
+        [JsonPropertyName("property")]
+        public string Property { get; set; }
+
+        [JsonPropertyName("value")]
+        public object Value { get; set; }
+
+        [JsonPropertyName("operator")]
+        public string OperatorString { get; set; } = OpEquals;
         public FilterOperator? Operator { get; set; }
         public bool And { get; set; } = true;
         public bool Not { get; set; } = false;
@@ -28,7 +34,7 @@ namespace ApiBase.Domain.Query
         {
             get
             {
-                var parts = (property ?? string.Empty).Split('.');
+                var parts = (Property ?? string.Empty).Split('.');
                 return parts.Last();
             }
         }
@@ -38,9 +44,11 @@ namespace ApiBase.Domain.Query
         public FilterOperator GetOperator()
         {
             if (Operator.HasValue)
+            {
                 return Operator.Value;
+            }
 
-            return @operator switch
+            return OperatorString switch
             {
                 OpEquals => FilterOperator.Equal,
                 OpGreater => FilterOperator.GreaterThan,
@@ -53,7 +61,7 @@ namespace ApiBase.Domain.Query
                 OpStartsWith => FilterOperator.StartsWith,
                 OpEndsWith => FilterOperator.EndsWith,
                 OpInOrNull => FilterOperator.InOrNull,
-                _ => throw new Exception($"Unknown operator '{@operator}'"),
+                _ => throw new NotSupportedException($"Unknown filter operator: '{OperatorString}'"),
             };
         }
     }
