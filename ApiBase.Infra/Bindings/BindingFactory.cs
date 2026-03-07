@@ -4,14 +4,20 @@ using System.Reflection;
 
 namespace ApiBase.Infra.Bindings
 {
+    /// <summary>
+    /// Selects and caches the appropriate <see cref="IBindingResolver"/> for a given source/destination property pair.
+    /// Resolver selection follows this priority:
+    /// <list type="number">
+    ///   <item>Same type → <see cref="DefaultBindingResolver"/></item>
+    ///   <item>IEnumerable source → <see cref="ListBindingResolver"/></item>
+    ///   <item>Complex class with <see cref="ComplexBindingResolver"/> attribute → <see cref="ComplexBindingResolver"/></item>
+    ///   <item>Complex class → <see cref="AssociationBindingResolver"/></item>
+    ///   <item>Different primitive/value types → <see cref="ConversionBindingResolver"/></item>
+    /// </list>
+    /// </summary>
     public class BindingFactory
     {
-        private readonly Dictionary<Type, IBindingResolver> _resolverCache;
-
-        public BindingFactory()
-        {
-            _resolverCache = new Dictionary<Type, IBindingResolver>();
-        }
+        private readonly Dictionary<Type, IBindingResolver> _resolverCache = new();
 
         private IBindingResolver GetResolver(Type resolverType)
         {
@@ -25,6 +31,9 @@ namespace ApiBase.Infra.Bindings
             return instance;
         }
 
+        /// <summary>
+        /// Returns the most appropriate <see cref="IBindingResolver"/> for the given property pair.
+        /// </summary>
         public IBindingResolver GetInstance(PropertyInfo sourceProperty, PropertyInfo destinationProperty)
         {
             var sourceType = sourceProperty.PropertyType;
@@ -42,8 +51,7 @@ namespace ApiBase.Infra.Bindings
 
             if (destinationType.IsClass)
             {
-                if (Attribute.IsDefined(sourceProperty, typeof(ComplexBindingResolver)) ||
-                    Attribute.IsDefined(destinationProperty, typeof(ComplexBindingResolver)))
+                if (Attribute.IsDefined(sourceProperty, typeof(ComplexBindingResolver)) || Attribute.IsDefined(destinationProperty, typeof(ComplexBindingResolver)))
                 {
                     return GetResolver(typeof(ComplexBindingResolver));
                 }

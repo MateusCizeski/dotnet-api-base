@@ -3,6 +3,10 @@ using System.Reflection;
 
 namespace ApiBase.Infra.Extensions
 {
+    /// <summary>
+    /// Helper methods for building dynamic types from property paths and dictionaries.
+    /// Used internally by the query infrastructure to create projected types at runtime.
+    /// </summary>
     public static class DynamicTypeBuilderExtension
     {
         private class PropertyNode
@@ -12,11 +16,21 @@ namespace ApiBase.Infra.Extensions
             public override string ToString() => Name;
         }
 
+        /// <summary>
+        /// Creates a dynamic type from an explicit dictionary of property names and types.
+        /// Delegates to <see cref="CustomTypeBuilder.CreateType"/>.
+        /// </summary>
         public static Type FromPropertyDictionary(Dictionary<string, Type> properties)
         {
             return CustomTypeBuilder.CreateType(properties);
         }
 
+        /// <summary>
+        /// Creates a dynamic type from a list of dot-notation property paths on the given base type.
+        /// Supports nested paths such as "Address.City", which result in nested dynamic types.
+        /// </summary>
+        /// <param name="baseType">The source type to reflect property types from.</param>
+        /// <param name="propertyPaths">Dot-notation property paths, e.g. ["Id", "Name", "Address.City"].</param>
         public static Type FromPropertyPaths(Type baseType, IEnumerable<string> propertyPaths)
         {
             var propertyGraph = BuildPropertyGraph(propertyPaths);
@@ -41,7 +55,6 @@ namespace ApiBase.Infra.Extensions
             foreach (var group in grouped)
             {
                 var node = new PropertyNode { Name = group.Key };
-
                 var children = group.Where(s => s.Length > 1).Select(s => s.Skip(1).ToArray()).ToList();
 
                 if (children.Any())
@@ -62,9 +75,11 @@ namespace ApiBase.Infra.Extensions
             foreach (var prop in properties)
             {
                 var propInfo = baseType.GetProperty(prop.Name);
-
+                
                 if (propInfo == null)
+                {
                     continue;
+                }
 
                 propTypes[prop.Name] = ResolvePropertyType(propInfo, prop.Children);
             }
@@ -93,8 +108,11 @@ namespace ApiBase.Infra.Extensions
         {
             var elementTypes = listType.GetGenericArguments().Select(type =>
                 type.IsPrimitive || type == typeof(string)
-                ? type : children.Any() ? CreateDynamicType(type, children)
-                : CreateTypeFromAllProperties(type)).ToArray();
+                    ? type
+                    : children.Any()
+                        ? CreateDynamicType(type, children)
+                        : CreateTypeFromAllProperties(type)
+            ).ToArray();
 
             return typeof(List<>).MakeGenericType(elementTypes);
         }
@@ -102,7 +120,6 @@ namespace ApiBase.Infra.Extensions
         private static Type CreateTypeFromAllProperties(Type type)
         {
             var props = type.GetProperties().ToDictionary(p => p.Name, p => p.PropertyType);
-
             return CustomTypeBuilder.CreateType(props);
         }
 

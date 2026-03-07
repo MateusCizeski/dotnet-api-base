@@ -50,7 +50,9 @@ namespace ApiBase.Infra.Query
         public List<string> GetIncludes()
         {
             if (string.IsNullOrWhiteSpace(Includes))
+            {
                 return [];
+            }
 
             try
             {
@@ -88,6 +90,7 @@ namespace ApiBase.Infra.Query
         public List<FilterGroup> GetFilters()
         {
             if (string.IsNullOrWhiteSpace(Filter))
+            {
                 return null;
             }
 
@@ -125,7 +128,6 @@ namespace ApiBase.Infra.Query
         {
             if (string.IsNullOrWhiteSpace(Sort))
                 return null;
-            }
 
             try
             {

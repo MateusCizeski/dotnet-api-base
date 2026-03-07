@@ -16,8 +16,8 @@ namespace ApiBase.Infra.Extensions
         /// </summary>
         public static object Convert(FilterModel filter, PropertyInfo property, MemberExpression memberExpr)
         {
-            // PascalCase after Domain rename
             var value = filter.Value;
+
             if (value == null) return null;
 
             try
@@ -57,7 +57,9 @@ namespace ApiBase.Infra.Extensions
                 if (targetType == typeof(string))
                 {
                     return value.ToString();
+                }
 
+                // Fallback: covers primitives, decimal and any other convertible type
                 return System.Convert.ChangeType(value, targetType);
             }
             catch

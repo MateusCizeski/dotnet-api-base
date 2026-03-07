@@ -4,18 +4,29 @@ using ApiBase.Infra.Extensions;
 using ApiBase.Infra.Projection;
 using ApiBase.Infra.Query;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace ApiBase.Controller.Base
 {
+    /// <summary>
+    /// Base controller providing standardized response helpers, dynamic query building
+    /// and structured logging for all ApiBase controllers.
+    /// </summary>
     public class BaseApiController<TApplication> : ControllerBase
     {
-        protected TApplication Application { get; set; }
+        protected TApplication Application { get; }
+        protected ILogger Logger { get; }
 
-        protected BaseApiController(TApplication application)
+        protected BaseApiController(TApplication application, ILogger logger)
         {
             Application = application;
+            Logger = logger;
         }
+
+        // -------------------------
+        // Response helpers
+        // -------------------------
 
         [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult Respond<TResponse>(HttpStatusCode statusCode, TResponse response)
@@ -26,6 +37,7 @@ namespace ApiBase.Controller.Base
         [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult RespondError(ApiErrorResponse error)
         {
+            Logger.LogWarning("Request error: {Message} | Type: {ErrorType}", error.Message, error.ErrorType);
             return BadRequest(error);
         }
 
@@ -45,6 +57,7 @@ namespace ApiBase.Controller.Base
         [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult RespondError(Exception ex)
         {
+            Logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
             return RespondError(ex.FlattenMessage());
         }
 
@@ -67,6 +80,13 @@ namespace ApiBase.Controller.Base
             return RespondSuccess(successResponse);
         }
 
+        // -------------------------
+        // Query builders
+        // -------------------------
+
+        /// <summary>
+        /// Applies filters, ordering and paginates the query, returning the requested page.
+        /// </summary>
         [ApiExplorerSettings(IgnoreApi = true)]
         public static ApiPaginatedResponse BuildPaginatedResponse<T>(QueryParams queryParams, IQueryable<T> query) where T : class
         {
@@ -86,6 +106,10 @@ namespace ApiBase.Controller.Base
             };
         }
 
+        /// <summary>
+        /// Applies ordering and optional field projection to the query without paginating.
+        /// Total reflects the count before pagination.
+        /// </summary>
         [ApiExplorerSettings(IgnoreApi = true)]
         public static ApiPaginatedResponse BuildFilteredResponse<T>(QueryParams queryParams, IQueryable<T> query) where T : class
         {
@@ -121,7 +145,7 @@ namespace ApiBase.Controller.Base
         {
             var orderList = queryParams.GetSort() ?? new List<SortModel>
             {
-                new SortModel { FilterValue = "Id", Direction = "asc" }
+                new SortModel { Property = "Id", Direction = "asc" }
             };
 
             return new OrderByQuery().ApplySorting(query, orderList);
@@ -131,7 +155,6 @@ namespace ApiBase.Controller.Base
         {
             var safePage = Math.Max(1, page);
             var safeLimit = Math.Max(1, limit);
-
             return query.Skip((safePage - 1) * safeLimit).Take(safeLimit).ToList();
         }
     }
