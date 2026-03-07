@@ -29,12 +29,12 @@ namespace ApiBase.Infra.UnitOfWork
             catch (DbUpdateException ex)
             {
                 RollbackChanges();
-                throw new Exception("Database update failed: " + ex.GetBaseException().Message, ex);
+                throw new DbUpdateException("Database update failed: " + ex.GetBaseException().Message, ex);
             }
             catch (ValidationException ex)
             {
                 RollbackChanges();
-                throw new Exception("Validation failed: " + ex.Message, ex);
+                throw new ValidationException("Validation failed: " + ex.Message, ex.ValidationAttribute, ex.Value);
             }
         }
 
@@ -85,13 +85,9 @@ namespace ApiBase.Infra.UnitOfWork
 
         private object MergeCustomFields<T>(object source) where T : EntityGuid, new()
         {
-            var entityProps = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name).ToHashSet();
-
             if (source is IDictionary<string, object> dict)
             {
-                var result = new Dictionary<string, object>(dict);
-
-                return result;
+                return new Dictionary<string, object>(dict);
             }
 
             var target = new Dictionary<string, object>();

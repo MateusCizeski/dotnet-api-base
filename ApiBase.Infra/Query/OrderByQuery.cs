@@ -8,7 +8,9 @@ namespace ApiBase.Infra.Query
         public IQueryable<T> ApplySorting<T>(IQueryable<T> query, List<SortModel> sortModels)
         {
             if (sortModels == null || !sortModels.Any())
+            {
                 return query;
+            }
 
             foreach (var sortModel in sortModels)
             {
@@ -16,14 +18,14 @@ namespace ApiBase.Infra.Query
                 var methodSuffix = sortModel.ASC() ? "By" : "ByDescending";
                 var methodName = $"{methodPrefix}{methodSuffix}";
 
-                var hasFilter = sortModel.filterValue switch
+                var hasFilter = sortModel.FilterValue switch
                 {
-                    null => false,
-                    string s => !string.IsNullOrEmpty(s),
-                    _ => true
+                    null => false, string s => !string.IsNullOrEmpty(s), _ => true
                 };
 
-                var orderedQuery = hasFilter ? ApplyConditionalOrder(query, sortModel.property, sortModel.filterValue, methodName) : ApplySimpleOrder(query, sortModel.property, methodName);
+                var orderedQuery = hasFilter
+                    ? ApplyConditionalOrder(query, sortModel.Property, sortModel.FilterValue, methodName)
+                    : ApplySimpleOrder(query, sortModel.Property, methodName);
 
                 if (orderedQuery != null)
                 {
@@ -59,9 +61,7 @@ namespace ApiBase.Infra.Query
             }
 
             if (propertyType == typeof(string))
-            {
                 expression = Expression.Call(expression, "ToLower", null);
-            }
 
             var condition = Expression.Condition(
                 Expression.Equal(expression, Expression.Constant(convertedFilter)),
@@ -71,7 +71,6 @@ namespace ApiBase.Infra.Query
             );
 
             var lambda = Expression.Lambda<Func<T, int>>(condition, parameter);
-
             return InvokeOrderMethod<T>(methodName, typeof(int), source, lambda);
         }
 
@@ -110,13 +109,19 @@ namespace ApiBase.Infra.Query
             try
             {
                 if (propertyType == typeof(long) || propertyType == typeof(long?))
+                {
                     return Convert.ToInt64(filterValue);
+                }
 
                 if (propertyType == typeof(int) || propertyType == typeof(int?))
+                {
                     return Convert.ToInt32(filterValue);
+                }
 
                 if (propertyType == typeof(string))
+                {
                     return filterValue.ToString()?.ToLower();
+                }
 
                 return filterValue;
             }

@@ -14,19 +14,13 @@ namespace ApiBase.Domain.Entities
         public string GetCustomizationIdentifier()
         {
             object[] customAttributes = GetType().GetCustomAttributes(typeof(DescriptionAttribute), inherit: true);
-            if (customAttributes.Count() == 0)
+
+            if (customAttributes.Length == 0)
             {
                 return null;
             }
 
-            try
-            {
-                return ((DescriptionAttribute)customAttributes[0]).Description;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
+            return ((DescriptionAttribute)customAttributes[0]).Description;
         }
     }
 }

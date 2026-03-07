@@ -6,30 +6,29 @@ namespace ApiBase.Infra.Query
 {
     public static class IQueryableExtensions
     {
-        private static int _paramCounter = 0;
-
         public static IQueryable<dynamic> SelectDynamic<T>(this IQueryable<T> source, IEnumerable<string> propertyNames)
         {
             if (source == null)
+            {
                 throw new ArgumentNullException(nameof(source));
+            }
 
             var selector = BuildSelector(typeof(T), propertyNames);
+
             return source.Select(selector as Expression<Func<T, object>>);
         }
 
         public static IQueryable<dynamic> SelectDynamic<T>(this IQueryable<T> source, string propertyNames)
         {
-            var properties = propertyNames.Split(',')
-                                          .Select(p => p.Trim())
-                                          .Where(p => !string.IsNullOrWhiteSpace(p));
+            var properties = propertyNames.Split(',').Select(p => p.Trim()).Where(p => !string.IsNullOrWhiteSpace(p));
+
             return source.SelectDynamic(properties);
         }
 
         private static LambdaExpression BuildSelector(Type sourceType, IEnumerable<string> propertyNames)
         {
-            var param = Expression.Parameter(sourceType, $"t{_paramCounter++}");
+            var param = Expression.Parameter(sourceType, $"t_{Guid.NewGuid():N}");
             var bindings = new List<MemberBinding>();
-
             var dynamicProperties = new Dictionary<string, Type>();
 
             foreach (var name in propertyNames)
@@ -50,6 +49,7 @@ namespace ApiBase.Infra.Query
 
             var initializer = Expression.MemberInit(Expression.New(dynamicType), bindings);
             var delegateType = typeof(Func<,>).MakeGenericType(sourceType, typeof(object));
+
             return Expression.Lambda(delegateType, initializer, param);
         }
 
@@ -61,7 +61,11 @@ namespace ApiBase.Infra.Query
             foreach (var part in parts)
             {
                 var prop = body.Type.GetProperty(part);
-                if (prop == null) throw new InvalidOperationException($"Property '{part}' not found on type '{body.Type.Name}'.");
+
+                if (prop == null)
+                {
+                    throw new InvalidOperationException($"Property '{part}' not found on type '{body.Type.Name}'.");
+                }
 
                 body = Expression.Property(body, prop);
             }
@@ -78,8 +82,11 @@ namespace ApiBase.Infra.Query
             foreach (var part in parts)
             {
                 property = currentType.GetProperty(part);
+
                 if (property == null)
+                {
                     return null;
+                }
 
                 currentType = property.PropertyType;
             }

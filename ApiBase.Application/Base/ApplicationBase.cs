@@ -1,27 +1,28 @@
 ﻿using ApiBase.Domain.Entities;
 using ApiBase.Domain.Interfaces;
+using ApiBase.Infra.UnitOfWork;
 
 namespace ApiBase.Application.Base
 {
     public class ApplicationBase<TEntity, TRepository> where TEntity : EntityGuid, new() where TRepository : IRepositoryBase<TEntity>
     {
-        protected IUnitOfWork unitOfWork { get; set; }
+        protected IUnitOfWork UnitOfWork { get; set; }
         protected TRepository Repository { get; set; }
 
-        protected ApplicationBase(IUnitOfWork _unitOfWork, TRepository repository)
+        protected ApplicationBase(IUnitOfWork unitOfWork, TRepository repository)
         {
-            unitOfWork = _unitOfWork;
+            UnitOfWork = unitOfWork;
             Repository = repository;
         }
 
         protected void Commit()
         {
-            unitOfWork.Commit();
+            UnitOfWork.Commit();
         }
 
         protected void RollbackChanges()
         {
-            unitOfWork.RollbackChanges();
+            UnitOfWork.RollbackChanges();
         }
     }
 }

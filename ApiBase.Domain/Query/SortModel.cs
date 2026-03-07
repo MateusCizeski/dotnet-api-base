@@ -1,13 +1,21 @@
-﻿namespace ApiBase.Domain.Query
+﻿using System.Text.Json.Serialization;
+
+namespace ApiBase.Domain.Query
 {
     public class SortModel
     {
-        public object filterValue;
-        public string property { get; set; }
-        public string direction { get; set; }
+        [JsonPropertyName("filterValue")]
+        public object FilterValue { get; set; }
+
+        [JsonPropertyName("property")]
+        public string Property { get; set; }
+
+        [JsonPropertyName("direction")]
+        public string Direction { get; set; }
+
         public bool ASC()
         {
-            return direction.ToLower() == "asc";
+            return Direction?.ToLower() == "asc";
         }
     }
 }

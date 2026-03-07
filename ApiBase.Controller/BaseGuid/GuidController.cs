@@ -17,7 +17,7 @@ namespace ApiBase.Controller.BaseGuid
         {
             try
             {
-                var result = base.Application.Get(queryParams);
+                var result = Application.Get(queryParams);
 
                 return Respond(HttpStatusCode.OK, new ApiPaginatedResponse
                 {
@@ -36,8 +36,9 @@ namespace ApiBase.Controller.BaseGuid
         {
             try
             {
-                List<string> list = queryField.GetFields();
-                object content = (list.Any() ? base.Application.Get(id) : base.Application.Get(id, list));
+                var fields = queryField.GetFields();
+
+                object content = fields.Any() ? Application.Get(id, fields) : Application.Get(id);
 
                 return Respond(HttpStatusCode.OK, content);
             }

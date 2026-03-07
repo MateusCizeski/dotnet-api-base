@@ -24,14 +24,12 @@ namespace ApiBase.Controller.Base
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        [HttpGet("ReturnErrorWithObject")]
         public IActionResult RespondError(ApiErrorResponse error)
         {
             return BadRequest(error);
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        [HttpGet("ReturnError")]
         public IActionResult RespondError(string message = "", object content = null, int? errorCode = null)
         {
             var errorResponse = new ApiErrorResponse
@@ -45,21 +43,18 @@ namespace ApiBase.Controller.Base
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        [HttpGet("ReturnErrorFromException")]
         public IActionResult RespondError(Exception ex)
         {
             return RespondError(ex.FlattenMessage());
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        [HttpGet("ReturnSuccessWithObject")]
         public IActionResult RespondSuccess(ApiSuccessResponse success)
         {
             return Ok(success);
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        [HttpGet("ReturnSuccess")]
         public IActionResult RespondSuccess(string message = "", object content = null, int? requestCode = null)
         {
             var successResponse = new ApiSuccessResponse
@@ -75,11 +70,11 @@ namespace ApiBase.Controller.Base
         [ApiExplorerSettings(IgnoreApi = true)]
         public static ApiPaginatedResponse BuildPaginatedResponse<T>(QueryParams queryParams, IQueryable<T> query) where T : class
         {
-            var result = BuildQueryResponse(queryParams, query);
+            var result = BuildFilteredResponse(queryParams, query);
 
             if (result.Content is not IQueryable<object> contentQueryable)
             {
-                throw new InvalidCastException("The content returned from BuildQueryResponse is not of type IQueryable<object>.");
+                throw new InvalidCastException("The content returned from BuildFilteredResponse is not of type IQueryable<object>.");
             }
 
             var paged = Paginate(contentQueryable, queryParams.page.GetValueOrDefault(), queryParams.limit.GetValueOrDefault(25));
@@ -92,7 +87,7 @@ namespace ApiBase.Controller.Base
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        public static ApiPaginatedResponse BuildQueryResponse<T>(QueryParams queryParams, IQueryable<T> query) where T : class
+        public static ApiPaginatedResponse BuildFilteredResponse<T>(QueryParams queryParams, IQueryable<T> query) where T : class
         {
             query = ApplyOrdering(queryParams, query);
 
@@ -126,7 +121,7 @@ namespace ApiBase.Controller.Base
         {
             var orderList = queryParams.GetSort() ?? new List<SortModel>
             {
-                new SortModel { filterValue = "Id", direction = "asc" }
+                new SortModel { FilterValue = "Id", Direction = "asc" }
             };
 
             return new OrderByQuery().ApplySorting(query, orderList);
@@ -134,7 +129,10 @@ namespace ApiBase.Controller.Base
 
         private static List<object> Paginate(IQueryable<object> query, int page, int limit)
         {
-            return query.Skip((page - 1) * limit).Take(limit).ToList();
+            var safePage = Math.Max(1, page);
+            var safeLimit = Math.Max(1, limit);
+
+            return query.Skip((safePage - 1) * safeLimit).Take(safeLimit).ToList();
         }
     }
 }

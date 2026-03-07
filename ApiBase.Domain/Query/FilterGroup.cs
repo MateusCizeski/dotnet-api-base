@@ -1,9 +1,14 @@
-﻿namespace ApiBase.Domain.Query
+﻿using System.Text.Json.Serialization;
+
+namespace ApiBase.Domain.Query
 {
     public class FilterGroup
     {
-        public string filter { get; set; }
+        [JsonPropertyName("filter")]
+        public string Filter { get; set; }
+
         public List<FilterModel> Filters { get; set; }
+
         public bool And { get; set; } = true;
     }
 }
