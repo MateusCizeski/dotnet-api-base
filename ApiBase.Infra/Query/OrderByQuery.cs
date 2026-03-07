@@ -3,27 +3,36 @@ using System.Linq.Expressions;
 
 namespace ApiBase.Infra.Query
 {
+    /// <summary>
+    /// Applies dynamic ordering to an IQueryable based on a list of SortModels.
+    /// Supports simple ordering and conditional ordering (pinning a specific value to the top).
+    /// </summary>
     public class OrderByQuery
     {
+        /// <summary>
+        /// Applies all sort descriptors in sequence to the query.
+        /// </summary>
         public IQueryable<T> ApplySorting<T>(IQueryable<T> query, List<SortModel> sortModels)
         {
             if (sortModels == null || !sortModels.Any())
+            {
                 return query;
+            }
 
             foreach (var sortModel in sortModels)
             {
                 var methodPrefix = query.Expression.Type != typeof(IOrderedQueryable<T>) ? "Order" : "Then";
-                var methodSuffix = sortModel.ASC() ? "By" : "ByDescending";
+                var methodSuffix = sortModel.IsAscending() ? "By" : "ByDescending";
                 var methodName = $"{methodPrefix}{methodSuffix}";
 
-                var hasFilter = sortModel.filterValue switch
+                var hasFilter = sortModel.FilterValue switch
                 {
-                    null => false,
-                    string s => !string.IsNullOrEmpty(s),
-                    _ => true
+                    null => false, string s => !string.IsNullOrEmpty(s), _ => true
                 };
 
-                var orderedQuery = hasFilter ? ApplyConditionalOrder(query, sortModel.property, sortModel.filterValue, methodName) : ApplySimpleOrder(query, sortModel.property, methodName);
+                var orderedQuery = hasFilter
+                    ? ApplyConditionalOrder(query, sortModel.Property, sortModel.FilterValue, methodName)
+                    : ApplySimpleOrder(query, sortModel.Property, methodName);
 
                 if (orderedQuery != null)
                 {
@@ -39,7 +48,6 @@ namespace ApiBase.Infra.Query
             var propertyType = typeof(T);
             var parameter = Expression.Parameter(propertyType, "x");
             var expression = BuildPropertyExpression(propertyPath, ref propertyType, parameter);
-
             var lambda = Expression.Lambda(typeof(Func<,>).MakeGenericType(typeof(T), propertyType), expression, parameter);
 
             return InvokeOrderMethod<T>(methodName, propertyType, source, lambda);
@@ -71,7 +79,6 @@ namespace ApiBase.Infra.Query
             );
 
             var lambda = Expression.Lambda<Func<T, int>>(condition, parameter);
-
             return InvokeOrderMethod<T>(methodName, typeof(int), source, lambda);
         }
 
@@ -81,10 +88,7 @@ namespace ApiBase.Infra.Query
 
             foreach (var prop in propertyPath.Split('.'))
             {
-                var propertyInfo = type.GetProperty(prop);
-
-                if (propertyInfo == null)
-                    throw new ArgumentException($"Property '{prop}' not found on type '{type.Name}'");
+                var propertyInfo = type.GetProperty(prop) ?? throw new ArgumentException($"Property '{prop}' not found on type '{type.Name}'.");
 
                 expression = Expression.Property(expression, propertyInfo);
                 type = propertyInfo.PropertyType;
@@ -110,13 +114,19 @@ namespace ApiBase.Infra.Query
             try
             {
                 if (propertyType == typeof(long) || propertyType == typeof(long?))
+                {
                     return Convert.ToInt64(filterValue);
+                }
 
                 if (propertyType == typeof(int) || propertyType == typeof(int?))
+                {
                     return Convert.ToInt32(filterValue);
+                }
 
                 if (propertyType == typeof(string))
+                {
                     return filterValue.ToString()?.ToLower();
+                }
 
                 return filterValue;
             }

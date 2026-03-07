@@ -6,8 +6,12 @@ using ApiBase.Repository.Contexts;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
-namespace ApiBase.Repository.Repositorys
+namespace ApiBase.Repository.Repositories
 {
+    /// <summary>
+    /// Generic base repository providing standard CRUD operations over a DbContext.
+    /// Inherit this class to get full query, insert, update and delete support for any EntityGuid.
+    /// </summary>
     public abstract class RepositoryBase<T> : IRepositoryBase<T>, IDisposable where T : EntityGuid
     {
         protected readonly DbContext Db;
@@ -21,10 +25,13 @@ namespace ApiBase.Repository.Repositorys
 
         public void Dispose()
         {
-            Db.Dispose();
+            // DbContext lifecycle is managed by the DI container (registered as Scoped via AddDbContext).
+            // Disposing it here would cause ObjectDisposedException in other repositories
+            // sharing the same context within the same request scope.
             GC.SuppressFinalize(this);
         }
 
+        /// <inheritdoc/>
         public virtual void Insert(T entity)
         {
             if (entity.Id == Guid.Empty)
@@ -35,6 +42,7 @@ namespace ApiBase.Repository.Repositorys
             DbSet.Add(entity);
         }
 
+        /// <inheritdoc/>
         public virtual void Insert(List<T> entities)
         {
             foreach (var entity in entities)
@@ -48,107 +56,102 @@ namespace ApiBase.Repository.Repositorys
             DbSet.AddRange(entities);
         }
 
+        /// <inheritdoc/>
         public virtual void Remove(T entity)
         {
             DbSet.Remove(entity);
         }
 
+        /// <inheritdoc/>
         public virtual void Remove(Guid id)
         {
             var entity = DbSet.Find(id);
-
             if (entity != null)
             {
                 Remove(entity);
             }
         }
 
+        /// <inheritdoc/>
         public virtual void Remove(List<T> entities)
         {
             DbSet.RemoveRange(entities);
         }
 
+        /// <inheritdoc/>
         public T GetById(Guid id, params string[] includes)
         {
             return Get(includes).FirstOrDefault(x => x.Id == id);
         }
 
+        /// <inheritdoc/>
         public IQueryable<T> Get(params string[] includes)
         {
-            if (includes.Length == 0) return DbSet;
+            if (includes.Length == 0)
+            {
+                return DbSet;
+            }
 
             IQueryable<T> queryable = DbSet.AsQueryable();
 
-            if (includes != null && includes.Any())
+            foreach (var navigationPropertyPath in includes)
             {
-                foreach (string navigationPropertyPath in includes)
-                {
-                    queryable = queryable.Include(navigationPropertyPath);
-                }
+                queryable = queryable.Include(navigationPropertyPath);
             }
 
             return queryable;
         }
 
+        /// <inheritdoc/>
         public virtual IQueryable<T> Get(QueryParams queryParams)
         {
-            List<FilterGroup> filters = queryParams.GetFilters();
-            List<string> includes = queryParams.GetIncludes();
-            List<SortModel> order = queryParams.GetSort() ?? DefaultOrder();
+            var filters = queryParams.GetFilters();
+            var includes = queryParams.GetIncludes();
+            var order = queryParams.GetSort() ?? DefaultOrder();
+
             return Get(filters, order, includes.ToArray());
         }
 
-        private List<SortModel> DefaultOrder()
-        {
-            return new List<SortModel>()
-            {
-                new SortModel
-                {
-                    property = "Id",
-                    direction = "asc"
-                }
-            };
-        }
-
+        /// <inheritdoc/>
         public IQueryable<T> Get(List<FilterModel> filters, List<SortModel> order, params string[] includes)
         {
-            FilterGroup item = new FilterGroup
-            {
-                Filters = filters
-            };
-            List<FilterGroup> list = new List<FilterGroup>();
-
-            list.Add(item);
-
-            return Get(list, order, includes);
+            return Get(new List<FilterGroup> { new FilterGroup { Filters = filters } }, order, includes);
         }
 
+        /// <inheritdoc/>
         public IQueryable<T> Get(List<FilterGroup> filters, List<SortModel> order, params string[] includes)
         {
             IQueryable<T> queryable = DbSet.AsQueryable();
 
             if (includes != null)
             {
-                foreach (string navigationPropertyPath in includes)
+                foreach (var navigationPropertyPath in includes)
                 {
                     queryable = queryable.Include(navigationPropertyPath);
                 }
             }
 
-            QueryBuilder<T> queryBuilder = new QueryBuilder<T>();
-            queryBuilder.Build(queryable, filters, order);
-
-            return queryBuilder.Query;
+            return new QueryBuilder<T>().Build(queryable, filters, order);
         }
 
+        /// <inheritdoc/>
         public IQueryable<T> Where(Expression<Func<T, bool>> expression)
         {
             return DbSet.Where(expression);
         }
 
+        /// <inheritdoc/>
         public T FirstOrDefault()
         {
             return DbSet.FirstOrDefault();
+        }
+
+        private List<SortModel> DefaultOrder()
+        {
+            return new List<SortModel>
+            {
+                new SortModel { Property = "Id", Direction = "asc" }
+            };
         }
     }
 }

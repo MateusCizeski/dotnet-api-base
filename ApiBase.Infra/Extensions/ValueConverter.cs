@@ -5,11 +5,19 @@ using System.Reflection;
 
 namespace ApiBase.Infra.Extensions
 {
+    /// <summary>
+    /// Converts filter values to the target property type for use in expression trees.
+    /// </summary>
     public static class ValueConverter
     {
+        /// <summary>
+        /// Converts the filter's Value to the type expected by the target property.
+        /// Returns null if conversion fails or value is null.
+        /// </summary>
         public static object Convert(FilterModel filter, PropertyInfo property, MemberExpression memberExpr)
         {
-            var value = filter.value;
+            // PascalCase after Domain rename
+            var value = filter.Value;
             if (value == null) return null;
 
             try
@@ -38,9 +46,6 @@ namespace ApiBase.Infra.Extensions
 
                 if (targetType == typeof(string))
                     return value.ToString();
-
-                if (targetType.IsPrimitive || targetType == typeof(decimal))
-                    return System.Convert.ChangeType(value, targetType);
 
                 return System.Convert.ChangeType(value, targetType);
             }

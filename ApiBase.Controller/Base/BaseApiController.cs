@@ -82,7 +82,7 @@ namespace ApiBase.Controller.Base
                 throw new InvalidCastException("The content returned from BuildQueryResponse is not of type IQueryable<object>.");
             }
 
-            var paged = Paginate(contentQueryable, queryParams.page.GetValueOrDefault(), queryParams.limit.GetValueOrDefault(25));
+            var paged = Paginate(contentQueryable, queryParams.Page.GetValueOrDefault(), queryParams.Limit.GetValueOrDefault(25));
 
             return new ApiPaginatedResponse
             {
@@ -126,7 +126,7 @@ namespace ApiBase.Controller.Base
         {
             var orderList = queryParams.GetSort() ?? new List<SortModel>
             {
-                new SortModel { filterValue = "Id", direction = "asc" }
+                new SortModel { FilterValue = "Id", Direction = "asc" }
             };
 
             return new OrderByQuery().ApplySorting(query, orderList);
