@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
-		<Version>2.0.0</Version>
+		<Version>2.0.1</Version>
 		<Authors>Mateus Cizeski</Authors>
 		<Nullable>enable</Nullable>
 		<NoWarn>$(NoWarn);1591</NoWarn>
@@ -10,10 +10,15 @@
 		<IncludeSymbols>true</IncludeSymbols>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core</PackageTags>
+		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<Description>ApiBase Infrastructure library: includes a full Unit of Work implementation, dynamic query and pagination helpers, and integration with Entity Framework Core.</Description>
+		<Description>
+			Infrastructure engine for ApiBase. Provides dynamic filter expressions
+			via expression trees, runtime type projection with Reflection.Emit,
+			Unit of Work with async support and structured logging, and EF Core
+			query helpers for pagination, sorting and field projection.
+		</Description>
 		<RepositoryUrl>https://github.com/MateusCizeski/ApiBase</RepositoryUrl>
 	</PropertyGroup>
 

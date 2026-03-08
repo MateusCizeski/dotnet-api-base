@@ -2,15 +2,20 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
-		<Version>2.0.0</Version>
+		<Version>2.0.1</Version>
 		<Authors>Mateus Cizeski</Authors>
 		<Nullable>enable</Nullable>
 		<PackageId>ApiBase.Repository</PackageId>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core</PackageTags>
+		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Description>ApiBase Repository library: provides a generic DbContext and base repository implementation with dynamic query support for Entity Framework Core.</Description>
+		<Description>
+			Generic EF Core repository for ApiBase. Implements IRepositoryBase with
+			full async support, automatic soft delete for ISoftDelete entities,
+			Update, and dynamic query composition. Includes base DbContext and
+			DI registration helpers.
+		</Description>
 		<RepositoryUrl>https://github.com/MateusCizeski/ApiBase</RepositoryUrl>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<IncludeSymbols>true</IncludeSymbols>

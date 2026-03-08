@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
-		<Version>2.0.0</Version>
+		<Version>2.0.1</Version>
 		<Authors>Mateus Cizeski</Authors>
 		<Nullable>enable</Nullable>
 		<NoWarn>$(NoWarn);1591</NoWarn>
@@ -10,10 +10,14 @@
 		<IncludeSymbols>true</IncludeSymbols>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core</PackageTags>
+		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<Description>ApiBase Domain library: defines the core entities, DTOs, interfaces, enums, and reusable view models, including generic support for listing and pagination.</Description>
+		<Description>
+			Core contracts and domain primitives for ApiBase. Defines EntityGuid,
+			ISoftDelete, IRepositoryBase, IUnitOfWork, IApplicationGuid and query
+			models (FilterModel, SortModel, QueryParams) with zero external dependencies.
+		</Description>
 		<RepositoryUrl>https://github.com/MateusCizeski/ApiBase</RepositoryUrl>
 	</PropertyGroup>
 
