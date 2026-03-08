@@ -14,7 +14,7 @@ A modular framework for ASP.NET Core APIs, published as independent NuGet packag
 | `ApiBase.Application` | Application services with pagination, filtering and logging |
 | `ApiBase.Controller` | Generic async controllers with standardized response helpers |
 
-👉 [View all packages on NuGet](https://www.nuget.org/profiles/seu-usuario)
+👉 [View all packages on NuGet](https://www.nuget.org/profiles/MateusCizeski)
 
 ---
 
