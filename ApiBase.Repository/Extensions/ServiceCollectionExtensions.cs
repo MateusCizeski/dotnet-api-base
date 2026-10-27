@@ -18,32 +18,24 @@ namespace ApiBase.Repository.Extensions
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <param name="dbContextConfig">
-        /// Optional DbContext configuration action.
-        /// If not provided, defaults to an in-memory database (useful for testing).
+        /// DbContext configuration action. The consuming application must install and
+        /// configure its own database provider package.
         /// </param>
         /// <example>
-        /// // SQL Server:
+        /// // SQL Server (requires Microsoft.EntityFrameworkCore.SqlServer):
         /// services.AddApiBaseCore(opt => opt.UseSqlServer(connectionString));
         ///
-        /// // PostgreSQL:
+        /// // PostgreSQL (requires Npgsql.EntityFrameworkCore.PostgreSQL):
         /// services.AddApiBaseCore(opt => opt.UseNpgsql(connectionString));
         /// </example>
-        public static IServiceCollection AddApiBaseCore(this IServiceCollection services, Action<DbContextOptionsBuilder>? dbContextConfig = null)
+        public static IServiceCollection AddApiBaseCore(this IServiceCollection services, Action<DbContextOptionsBuilder> dbContextConfig)
         {
-            if (dbContextConfig != null)
-            {
-                services.AddDbContext<Context>(dbContextConfig);
-            }
-            else
-            {
-                services.AddDbContext<Context>(opt => opt.UseInMemoryDatabase("DefaultDatabase"));
-            }
+            ArgumentNullException.ThrowIfNull(dbContextConfig);
+
+            services.AddDbContext<Context>(dbContextConfig);
 
             services.AddScoped(typeof(IRepositoryBase<>), typeof(RepositoryBase<>));
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-            // Logging is provided by the ASP.NET Core host — no explicit registration needed.
-            // ILogger<T> is available for injection in UnitOfWork and RepositoryBase automatically.
 
             services.AddHttpContextAccessor();
             services.AddHealthChecks();
