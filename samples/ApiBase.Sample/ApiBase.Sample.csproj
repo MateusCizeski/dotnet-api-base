@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+		<GenerateDocumentationFile>false</GenerateDocumentationFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\ApiBase.Repository\ApiBase.Repository.csproj" />
+		<ProjectReference Include="..\..\ApiBase.Application\ApiBase.Application.csproj" />
+		<ProjectReference Include="..\..\ApiBase.Controller\ApiBase.Controller.csproj" />
+	</ItemGroup>
+
+</Project>

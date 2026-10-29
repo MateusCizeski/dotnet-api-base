@@ -1,21 +1,18 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<NoWarn>$(NoWarn);1591</NoWarn>
 		<PackageId>ApiBase.Controller</PackageId>
-		<IncludeSymbols>true</IncludeSymbols>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<Description>
-			ASP.NET Core controller layer for ApiBase. Provides GuidController with
-			async GET list and GET by Id out of the box, standardized success/error
-			response helpers, dynamic query params binding and structured logging
-			via ILogger.
+			ASP.NET Core layer for ApiBase. GuidController exposes GET list and GET by Id,
+			ApiBaseExceptionHandler turns exceptions into ProblemDetails (400/404/500 without
+			internal details) and AddApiBaseJwt registers JWT Bearer authentication.
 		</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
-  	<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
 	</ItemGroup>
 
 	<ItemGroup>

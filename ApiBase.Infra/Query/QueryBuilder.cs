@@ -11,7 +11,7 @@ namespace ApiBase.Infra.Query
         /// <summary>
         /// Applies filters and sorting to the query, returning the composed IQueryable directly.
         /// </summary>
-        public IQueryable<T> Build(IQueryable<T> query, List<FilterGroup> filters, List<SortModel> sorters)
+        public IQueryable<T> Build(IQueryable<T> query, List<FilterGroup>? filters, List<SortModel>? sorters)
         {
             query = new DynamicWhereBuilder().Build(query, filters);
             query = new OrderByQuery().ApplySorting(query, sorters);

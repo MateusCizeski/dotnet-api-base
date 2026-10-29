@@ -1,4 +1,5 @@
-﻿using ApiBase.Domain.Query;
+using ApiBase.Domain.Exceptions;
+using ApiBase.Domain.Query;
 using ApiBase.Infra.Query;
 using ApiBase.Tests.Fixtures;
 
@@ -89,11 +90,11 @@ namespace ApiBase.Tests.Infra
         }
 
         [Fact]
-        public void ApplySorting_InvalidProperty_ThrowsArgumentException()
+        public void ApplySorting_InvalidProperty_ThrowsInvalidQueryException()
         {
             var sort = new List<SortModel> { new() { Property = "NonExistentProperty", Direction = "asc" } };
 
-            Assert.Throws<ArgumentException>(() => new OrderByQuery().ApplySorting(Query, sort).ToList());
+            Assert.Throws<InvalidQueryException>(() => new OrderByQuery().ApplySorting(Query, sort).ToList());
         }
 
         [Fact]

@@ -7,17 +7,18 @@ namespace ApiBase.Repository.Contexts
     /// Inherit from this class in your application to add DbSets and configure the model.
     /// Override <see cref="ModelCreating"/> instead of <c>OnModelCreating</c> directly
     /// to avoid having to call <c>base.OnModelCreating</c> manually.
+    /// The soft delete query filter is applied automatically after your configuration.
     /// </summary>
     /// <example>
-    /// public class AppContext : Context
+    /// public class AppDbContext : Context
     /// {
-    ///     public DbSet&lt;Product&gt; Products { get; set; }
+    ///     public DbSet&lt;Product&gt; Products =&gt; Set&lt;Product&gt;();
     ///
-    ///     public AppContext(DbContextOptions options) : base(options) { }
+    ///     public AppDbContext(DbContextOptions&lt;AppDbContext&gt; options) : base(options) { }
     ///
     ///     public override void ModelCreating(ModelBuilder modelBuilder)
     ///     {
-    ///         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppContext).Assembly);
+    ///         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     ///     }
     /// }
     /// </example>
@@ -29,6 +30,7 @@ namespace ApiBase.Repository.Contexts
         {
             ModelCreating(modelBuilder);
             base.OnModelCreating(modelBuilder);
+            modelBuilder.ApplySoftDeleteQueryFilters();
         }
 
         /// <summary>

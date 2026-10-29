@@ -16,7 +16,10 @@ namespace ApiBase.Infra.Extensions
     {
         private static readonly AssemblyName AssemblyName = new("DynamicTypesAssembly");
         private static readonly ModuleBuilder ModuleBuilder;
-        private static readonly ConcurrentDictionary<string, Type> TypeCache = new();
+        private static readonly ConcurrentDictionary<string, Lazy<Type>> TypeCache = new();
+
+        // ModuleBuilder is not thread-safe: different keys may be built at the same time.
+        private static readonly Lock BuildLock = new();
 
         static CustomTypeBuilder()
         {
@@ -33,14 +36,15 @@ namespace ApiBase.Infra.Extensions
         {
             var cacheKey = BuildCacheKey(properties);
 
-            if (TypeCache.TryGetValue(cacheKey, out var cachedType))
+            // GetOrAdd alone can run the factory twice under concurrency (two types for the same key).
+            // Lazy<T> guarantees a single BuildType per key; the losing Lazy is discarded unevaluated.
+            return TypeCache.GetOrAdd(cacheKey, _ => new Lazy<Type>(() =>
             {
-                return cachedType;
-            }
-
-            var newType = BuildType(properties);
-            TypeCache[cacheKey] = newType;
-            return newType;
+                lock (BuildLock)
+                {
+                    return BuildType(properties);
+                }
+            })).Value;
         }
 
         /// <summary>
@@ -54,14 +58,15 @@ namespace ApiBase.Infra.Extensions
 
         private static string BuildCacheKey(Dictionary<string, Type> properties)
         {
-            return string.Join(";", properties.Select(p => $"{p.Key}:{p.Value.FullName}"));
+            // Ordered by name: {Name, Price} and {Price, Name} share the same type.
+            return string.Join(";", properties.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{p.Key}:{p.Value.FullName}"));
         }
 
         private static Type BuildType(Dictionary<string, Type> properties)
         {
             string typeName = $"DynamicType_{Guid.NewGuid():N}";
 
-            var typeBuilder = ModuleBuilder.DefineType(typeName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Serializable
+            var typeBuilder = ModuleBuilder.DefineType(typeName, TypeAttributes.Public | TypeAttributes.Class
             );
 
             foreach (var prop in properties)

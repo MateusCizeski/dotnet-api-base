@@ -2,7 +2,6 @@
 using ApiBase.Domain.Interfaces;
 using ApiBase.Domain.Query;
 using ApiBase.Infra.Query;
-using ApiBase.Repository.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
@@ -10,28 +9,27 @@ using System.Linq.Expressions;
 namespace ApiBase.Repository.Repositories
 {
     /// <summary>
-    /// Generic base repository providing full CRUD, async operations and automatic soft delete filtering.
+    /// Generic base repository providing CRUD and async operations over a DbContext.
     /// Entities implementing <see cref="ISoftDelete"/> are never physically removed —
-    /// <see cref="Remove(T)"/> sets IsDeleted/DeletedAt instead, and all queries automatically
-    /// exclude soft-deleted records.
+    /// <see cref="Remove(T)"/> sets IsDeleted/DeletedAt instead. Reads hide soft-deleted
+    /// records through the global query filter (see <c>ApplySoftDeleteQueryFilters</c>).
     /// </summary>
-    public abstract class RepositoryBase<T> : IRepositoryBase<T>, IDisposable where T : EntityGuid
+    public abstract class RepositoryBase<T> : IRepositoryBase<T> where T : EntityGuid
     {
         protected readonly DbContext Db;
         protected readonly DbSet<T> DbSet;
         protected readonly ILogger Logger;
 
-        protected RepositoryBase(Context context, ILogger logger)
+        /// <param name="context">
+        /// The scoped DbContext. <c>AddApiBaseCore&lt;TContext&gt;</c> registers your context
+        /// also as <see cref="DbContext"/>, so the repository and the unit of work share the same instance.
+        /// </param>
+        /// <param name="logger">Logger used for debug traces of queued writes.</param>
+        protected RepositoryBase(DbContext context, ILogger logger)
         {
-            Db = context;
+            Db = context ?? throw new ArgumentNullException(nameof(context));
             DbSet = Db.Set<T>();
-            Logger = logger;
-        }
-
-        public void Dispose()
-        {
-            // DbContext lifecycle is managed by the DI container (Scoped via AddDbContext).
-            GC.SuppressFinalize(this);
+            Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         // -------------------------
@@ -41,11 +39,6 @@ namespace ApiBase.Repository.Repositories
         /// <inheritdoc/>
         public virtual void Insert(T entity)
         {
-            if (entity.Id == Guid.Empty)
-            {
-                entity.Id = Guid.NewGuid();
-            }
-
             DbSet.Add(entity);
             Logger.LogDebug("Insert queued for {Entity} with Id {Id}.", typeof(T).Name, entity.Id);
         }
@@ -53,14 +46,6 @@ namespace ApiBase.Repository.Repositories
         /// <inheritdoc/>
         public virtual void Insert(List<T> entities)
         {
-            foreach (var entity in entities)
-            {
-                if (entity.Id == Guid.Empty)
-                {
-                    entity.Id = Guid.NewGuid();
-                }
-            }
-
             DbSet.AddRange(entities);
             Logger.LogDebug("Insert queued for {Count} {Entity} record(s).", entities.Count, typeof(T).Name);
         }
@@ -82,18 +67,18 @@ namespace ApiBase.Repository.Repositories
                 softDeletable.DeletedAt = DateTime.UtcNow;
                 DbSet.Update(entity);
                 Logger.LogDebug("Soft delete queued for {Entity} with Id {Id}.", typeof(T).Name, entity.Id);
+                return;
             }
-            else
-            {
-                DbSet.Remove(entity);
-                Logger.LogDebug("Hard delete queued for {Entity} with Id {Id}.", typeof(T).Name, entity.Id);
-            }
+
+            DbSet.Remove(entity);
+            Logger.LogDebug("Hard delete queued for {Entity} with Id {Id}.", typeof(T).Name, entity.Id);
         }
 
         /// <inheritdoc/>
         public virtual void Remove(Guid id)
         {
             var entity = DbSet.Find(id);
+
             if (entity != null)
             {
                 Remove(entity);
@@ -114,37 +99,24 @@ namespace ApiBase.Repository.Repositories
         // -------------------------
 
         /// <inheritdoc/>
-        public virtual async Task InsertAsync(T entity)
+        public virtual async Task InsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            if (entity.Id == Guid.Empty)
-            {
-                entity.Id = Guid.NewGuid();
-            }
-
-            await DbSet.AddAsync(entity);
+            await DbSet.AddAsync(entity, cancellationToken);
             Logger.LogDebug("InsertAsync queued for {Entity} with Id {Id}.", typeof(T).Name, entity.Id);
         }
 
         /// <inheritdoc/>
-        public virtual async Task InsertAsync(List<T> entities)
+        public virtual async Task InsertAsync(List<T> entities, CancellationToken cancellationToken = default)
         {
-            foreach (var entity in entities)
-            {
-                if (entity.Id == Guid.Empty)
-                {
-                    entity.Id = Guid.NewGuid();
-                }
-            }
-
-            await DbSet.AddRangeAsync(entities);
+            await DbSet.AddRangeAsync(entities, cancellationToken);
             Logger.LogDebug("InsertAsync queued for {Count} {Entity} record(s).", entities.Count, typeof(T).Name);
         }
 
         /// <inheritdoc/>
-        public virtual async Task RemoveAsync(Guid id)
+        public virtual async Task RemoveAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var entity = await DbSet.FindAsync(id);
-            
+            var entity = await DbSet.FindAsync([id], cancellationToken);
+
             if (entity != null)
             {
                 Remove(entity);
@@ -156,26 +128,22 @@ namespace ApiBase.Repository.Repositories
         // -------------------------
 
         /// <inheritdoc/>
-        public T GetById(Guid id, params string[] includes)
+        public virtual T? GetById(Guid id, params string[] includes)
         {
             return Get(includes).FirstOrDefault(x => x.Id == id);
         }
 
         /// <inheritdoc/>
-        public IQueryable<T> Get(params string[] includes)
+        public virtual IQueryable<T> Get(params string[] includes)
         {
-            IQueryable<T> query = includes.Length == 0 ? DbSet : includes.Aggregate(DbSet.AsQueryable(), (q, path) => q.Include(path));
+            IQueryable<T> query = DbSet;
 
-            return ApplySoftDeleteFilter(query);
-        }
+            foreach (var path in includes ?? [])
+            {
+                query = query.Include(path);
+            }
 
-        /// <inheritdoc/>
-        public virtual IQueryable<T> Get(QueryParams queryParams)
-        {
-            var filters = queryParams.GetFilters();
-            var includes = queryParams.GetIncludes();
-            var order = queryParams.GetSort() ?? DefaultOrder();
-            return Get(filters, order, includes.ToArray());
+            return query;
         }
 
         /// <inheritdoc/>
@@ -187,30 +155,19 @@ namespace ApiBase.Repository.Repositories
         /// <inheritdoc/>
         public IQueryable<T> Get(List<FilterGroup> filters, List<SortModel> order, params string[] includes)
         {
-            IQueryable<T> query = DbSet.AsQueryable();
-
-            if (includes != null)
-            {
-                foreach (var path in includes)
-                {
-                    query = query.Include(path);
-                }
-            }
-
-            query = ApplySoftDeleteFilter(query);
-            return new QueryBuilder<T>().Build(query, filters, order);
+            return new QueryBuilder<T>().Build(Get(includes), filters, order ?? DefaultOrder());
         }
 
         /// <inheritdoc/>
         public IQueryable<T> Where(Expression<Func<T, bool>> expression)
         {
-            return ApplySoftDeleteFilter(DbSet).Where(expression);
+            return DbSet.Where(expression);
         }
 
         /// <inheritdoc/>
-        public T FirstOrDefault()
+        public T? FirstOrDefault()
         {
-            return ApplySoftDeleteFilter(DbSet).FirstOrDefault();
+            return DbSet.FirstOrDefault();
         }
 
         // -------------------------
@@ -218,42 +175,34 @@ namespace ApiBase.Repository.Repositories
         // -------------------------
 
         /// <inheritdoc/>
-        public async Task<T> GetByIdAsync(Guid id, params string[] includes)
+        public Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return await Get(includes).FirstOrDefaultAsync(x => x.Id == id);
+            return GetByIdAsync(id, [], cancellationToken);
         }
 
         /// <inheritdoc/>
-        public async Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> expression)
+        public virtual Task<T?> GetByIdAsync(Guid id, string[] includes, CancellationToken cancellationToken = default)
         {
-            return await ApplySoftDeleteFilter(DbSet).FirstOrDefaultAsync(expression);
+            return Get(includes).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         }
 
         /// <inheritdoc/>
-        public async Task<bool> AnyAsync(Expression<Func<T, bool>> expression)
+        public Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
         {
-            return await ApplySoftDeleteFilter(DbSet).AnyAsync(expression);
+            return DbSet.FirstOrDefaultAsync(expression, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<bool> AnyAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        {
+            return DbSet.AnyAsync(expression, cancellationToken);
         }
 
         // -------------------------
         // Helpers
         // -------------------------
 
-        /// <summary>
-        /// Automatically filters out soft-deleted records for entities implementing <see cref="ISoftDelete"/>.
-        /// For entities that do not implement ISoftDelete, returns the query unchanged.
-        /// </summary>
-        private IQueryable<T> ApplySoftDeleteFilter(IQueryable<T> query)
-        {
-            if (typeof(ISoftDelete).IsAssignableFrom(typeof(T)))
-            {
-                return query.Where(e => !((ISoftDelete)e).IsDeleted);
-            }
-
-            return query;
-        }
-
-        private List<SortModel> DefaultOrder()
+        private static List<SortModel> DefaultOrder()
         {
             return new List<SortModel>
             {

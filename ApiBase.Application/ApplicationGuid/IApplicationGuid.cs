@@ -5,9 +5,10 @@ using ApiBase.Infra.Query;
 namespace ApiBase.Application.ApplicationGuid
 {
     /// <summary>
-    /// Application service contract for entities with a GUID primary key.
-    /// Provides standard read operations with support for pagination, filtering,
-    /// field projection and dynamic sorting.
+    /// Read-side application service contract for entities with a GUID primary key.
+    /// Provides read operations with pagination, filtering, field projection and dynamic sorting.
+    /// Writes (commands) are not part of this contract: they go through your own services
+    /// and the domain model.
     /// </summary>
     /// <typeparam name="TView">The view/DTO type returned by queries.</typeparam>
     public interface IApplicationGuid<TView> where TView : IdGuidView, new()
@@ -22,16 +23,14 @@ namespace ApiBase.Application.ApplicationGuid
         GetView Get(QueryParams queryParams);
 
         /// <summary>
-        /// Returns a single record by Id, including all fields.
-        /// Returns an empty object if not found.
+        /// Returns a single record by Id, or null when it does not exist.
         /// </summary>
-        object Get(Guid id);
+        TView? Get(Guid id);
 
         /// <summary>
-        /// Returns a single record by Id, projected to the specified fields only.
-        /// Returns an empty object if not found.
+        /// Returns a single record by Id projected to the specified fields only, or null when it does not exist.
         /// </summary>
-        object Get(Guid id, List<string> fields);
+        object? Get(Guid id, List<string> fields);
 
         // -------------------------
         // Read (async)
@@ -40,18 +39,17 @@ namespace ApiBase.Application.ApplicationGuid
         /// <summary>
         /// Asynchronously returns a paginated, filtered and sorted list of records.
         /// </summary>
-        Task<GetView> GetAsync(QueryParams queryParams);
+        Task<GetView> GetAsync(QueryParams queryParams, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Asynchronously returns a single record by Id, including all fields.
-        /// Returns an empty object if not found.
+        /// Asynchronously returns a single record by Id, or null when it does not exist.
         /// </summary>
-        Task<object> GetAsync(Guid id);
+        Task<TView?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Asynchronously returns a single record by Id, projected to the specified fields only.
-        /// Returns an empty object if not found.
+        /// Asynchronously returns a single record by Id projected to the specified fields only,
+        /// or null when it does not exist.
         /// </summary>
-        Task<object> GetAsync(Guid id, List<string> fields);
+        Task<object?> GetAsync(Guid id, List<string> fields, CancellationToken cancellationToken = default);
     }
 }

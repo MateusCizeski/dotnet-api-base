@@ -17,13 +17,13 @@ namespace ApiBase.Domain.Query
         /// Dot-notation property path to sort by. Example: "Address.City"
         /// </summary>
         [JsonPropertyName("property")]
-        public string Property { get; set; }
+        public string Property { get; set; } = string.Empty;
 
         /// <summary>
         /// Sort direction: "asc" or "desc".
         /// </summary>
         [JsonPropertyName("direction")]
-        public string Direction { get; set; }
+        public string Direction { get; set; } = "asc";
 
         /// <summary>
         /// Returns true if the sort direction is ascending.

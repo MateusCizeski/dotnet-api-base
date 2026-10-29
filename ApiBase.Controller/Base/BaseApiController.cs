@@ -1,7 +1,5 @@
 ﻿using ApiBase.Domain.DTOs;
-using ApiBase.Domain.Query;
-using ApiBase.Infra.Extensions;
-using ApiBase.Infra.Projection;
+using ApiBase.Infra.Helpers;
 using ApiBase.Infra.Query;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -12,6 +10,7 @@ namespace ApiBase.Controller.Base
     /// <summary>
     /// Base controller providing standardized response helpers, dynamic query building
     /// and structured logging for all ApiBase controllers.
+    /// Exceptions are handled by <c>ApiBaseExceptionHandler</c>, not by the controllers.
     /// </summary>
     public class BaseApiController<TApplication> : ControllerBase
     {
@@ -34,6 +33,9 @@ namespace ApiBase.Controller.Base
             return new ObjectResult(response) { StatusCode = (int)statusCode };
         }
 
+        /// <summary>
+        /// Returns 400 with the given envelope. The message is sent to the client: never pass exception details.
+        /// </summary>
         [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult RespondError(ApiErrorResponse error)
         {
@@ -41,8 +43,11 @@ namespace ApiBase.Controller.Base
             return BadRequest(error);
         }
 
+        /// <summary>
+        /// Returns 400 with a message for the client. The message is sent as is: never pass exception details.
+        /// </summary>
         [ApiExplorerSettings(IgnoreApi = true)]
-        public IActionResult RespondError(string message = "", object content = null, int? errorCode = null)
+        public IActionResult RespondError(string message = "", object? content = null, int? errorCode = null)
         {
             var errorResponse = new ApiErrorResponse
             {
@@ -55,20 +60,13 @@ namespace ApiBase.Controller.Base
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        public IActionResult RespondError(Exception ex)
-        {
-            Logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
-            return RespondError(ex.FlattenMessage());
-        }
-
-        [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult RespondSuccess(ApiSuccessResponse success)
         {
             return Ok(success);
         }
 
         [ApiExplorerSettings(IgnoreApi = true)]
-        public IActionResult RespondSuccess(string message = "", object content = null, int? requestCode = null)
+        public IActionResult RespondSuccess(string message = "", object? content = null, int? requestCode = null)
         {
             var successResponse = new ApiSuccessResponse
             {
@@ -85,77 +83,20 @@ namespace ApiBase.Controller.Base
         // -------------------------
 
         /// <summary>
-        /// Applies filters, ordering and paginates the query, returning the requested page.
+        /// Applies filters, ordering, field projection and pagination (limit capped by MaxPageSize)
+        /// to a queryable of views/DTOs. All properties of <typeparamref name="T"/> are filterable,
+        /// so use it only with types that are safe to expose.
         /// </summary>
         [ApiExplorerSettings(IgnoreApi = true)]
         public static ApiPaginatedResponse BuildPaginatedResponse<T>(QueryParams queryParams, IQueryable<T> query) where T : class
         {
-            var result = BuildFilteredResponse(queryParams, query);
-
-            if (result.Content is not IQueryable<object> contentQueryable)
-            {
-                throw new InvalidCastException("The content returned from BuildFilteredResponse is not of type IQueryable<object>.");
-            }
-
-            var paged = Paginate(contentQueryable, queryParams.Page.GetValueOrDefault(), queryParams.Limit.GetValueOrDefault(25));
+            var result = new GuidQueryHelper().Page(query, queryParams);
 
             return new ApiPaginatedResponse
             {
-                Content = paged.AsQueryable(),
+                Content = result.Content,
                 Total = result.Total
             };
-        }
-
-        /// <summary>
-        /// Applies ordering and optional field projection to the query without paginating.
-        /// Total reflects the count before pagination.
-        /// </summary>
-        [ApiExplorerSettings(IgnoreApi = true)]
-        public static ApiPaginatedResponse BuildFilteredResponse<T>(QueryParams queryParams, IQueryable<T> query) where T : class
-        {
-            query = ApplyOrdering(queryParams, query);
-
-            IQueryable<object> resultQuery;
-            var fields = queryParams.GetFields();
-
-            if (fields.Count > 0)
-            {
-                var propertyDict = typeof(T)
-                    .GetProperties()
-                    .Where(p => fields.Contains(p.Name))
-                    .ToDictionary(p => p.Name, p => p.PropertyType);
-
-                var dynamicType = CustomTypeBuilder.CreateType(propertyDict);
-                var selector = new ProjectionBuilder().Build<T>(dynamicType);
-                resultQuery = query.Select(selector);
-            }
-            else
-            {
-                resultQuery = query.Cast<object>();
-            }
-
-            return new ApiPaginatedResponse
-            {
-                Content = resultQuery,
-                Total = resultQuery.Count()
-            };
-        }
-
-        private static IQueryable<T> ApplyOrdering<T>(QueryParams queryParams, IQueryable<T> query)
-        {
-            var orderList = queryParams.GetSort() ?? new List<SortModel>
-            {
-                new SortModel { Property = "Id", Direction = "asc" }
-            };
-
-            return new OrderByQuery().ApplySorting(query, orderList);
-        }
-
-        private static List<object> Paginate(IQueryable<object> query, int page, int limit)
-        {
-            var safePage = Math.Max(1, page);
-            var safeLimit = Math.Max(1, limit);
-            return query.Skip((safePage - 1) * safeLimit).Take(safeLimit).ToList();
         }
     }
 }

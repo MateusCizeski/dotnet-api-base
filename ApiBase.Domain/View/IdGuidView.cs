@@ -1,12 +1,12 @@
-﻿using ApiBase.Domain.Entities;
-using ApiBase.Domain.Interfaces;
+﻿using ApiBase.Domain.Interfaces;
 
 namespace ApiBase.Domain.View
 {
     /// <summary>
-    /// Base view class for entities with a GUID primary key.
-    /// All view/DTO types used with <see cref="ApiBase.Application.ApplicationGuid.ApplicationGuid{TEntity,TRepository,TView}"/>
-    /// must inherit from this class.
+    /// Base read model (view) for entities with a GUID primary key.
+    /// Views are what the API returns: only the properties declared here are exposed,
+    /// and only these properties can be used in filter and sort expressions.
+    /// The view does not inherit from the entity — the read model stays separate from the domain model.
     /// </summary>
     /// <example>
     /// public class ProductView : IdGuidView
@@ -15,5 +15,9 @@ namespace ApiBase.Domain.View
     ///     public decimal Price { get; set; }
     /// }
     /// </example>
-    public class IdGuidView : EntityGuid, IView { }
+    public class IdGuidView : IView
+    {
+        /// <summary>The identifier of the projected entity.</summary>
+        public Guid Id { get; set; }
+    }
 }

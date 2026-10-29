@@ -1,14 +1,26 @@
-
 <Project>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Version>3.0.0</Version>
     <Authors>Mateus Cizeski</Authors>
-    <RepositoryUrl>https://github.com/MateusCizeski/ApiBase</RepositoryUrl>
+    <RepositoryUrl>https://github.com/MateusCizeski/dotnet-api-base</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/MateusCizeski/dotnet-api-base</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>aspnetcore;webapi;efcore;repository-pattern;unitofwork;expression-trees;dynamic-filter;pagination;soft-delete;cqrs</PackageTags>
 
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+
+  <!-- O README da raiz vai dentro de cada pacote (aparece na página do nuget.org). -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 </Project>

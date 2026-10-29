@@ -1,16 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<NoWarn>$(NoWarn);1591</NoWarn>
 		<PackageId>ApiBase.Application</PackageId>
-		<IncludeSymbols>true</IncludeSymbols>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<Description>
-			Application service layer for ApiBase. Provides ApplicationGuid with
-			paginated listing, field projection, async read methods and structured
-			logging via ILogger. Inherit and override DefaultFilter for tenant
-			isolation or ownership rules.
+			Application (read side) layer for ApiBase. ApplicationGuid returns paginated,
+			filtered and sorted views, single records by Id and field projections, fully
+			async. Override DefaultFilter for tenant isolation or ownership rules.
 		</Description>
 	</PropertyGroup>
 

@@ -1,4 +1,5 @@
-﻿using ApiBase.Domain.Enums;
+using ApiBase.Domain.Exceptions;
+using ApiBase.Domain.Enums;
 using ApiBase.Domain.Query;
 using ApiBase.Infra.Extensions;
 using ApiBase.Tests.Fixtures;
@@ -86,21 +87,40 @@ namespace ApiBase.Tests.Infra
         }
 
         [Fact]
-        public void Convert_InvalidGuid_ReturnsNull()
+        public void Convert_InvalidGuid_ThrowsInvalidQueryException()
         {
             var (filter, property) = Setup<ProductEntity>(nameof(ProductEntity.Id), "not-a-guid");
-            var result = ValueConverter.Convert(filter, property, null);
 
-            Assert.Null(result);
+            var ex = Assert.Throws<InvalidQueryException>(() => ValueConverter.Convert(filter, property, null));
+            Assert.Contains("not-a-guid", ex.Message);
         }
 
         [Fact]
-        public void Convert_InvalidDecimal_ReturnsNull()
+        public void Convert_InvalidDecimal_ThrowsInvalidQueryException()
         {
             var (filter, property) = Setup<ProductEntity>(nameof(ProductEntity.Price), "not-a-number");
-            var result = ValueConverter.Convert(filter, property, null);
 
-            Assert.Null(result);
+            Assert.Throws<InvalidQueryException>(() => ValueConverter.Convert(filter, property, null));
+        }
+
+        [Fact]
+        public void Convert_JsonArray_ReturnsTypedList()
+        {
+            // Filters deserialized from the query string arrive as JsonElement, not as List<object>.
+            var json = System.Text.Json.JsonDocument.Parse("[1.5, 2]").RootElement;
+            var (filter, property) = Setup<ProductEntity>(nameof(ProductEntity.Price), json, FilterOperator.In);
+
+            var list = Assert.IsType<List<decimal>>(ValueConverter.Convert(filter, property, null));
+            Assert.Equal([1.5m, 2m], list);
+        }
+
+        [Fact]
+        public void Convert_JsonString_ReturnsConvertedScalar()
+        {
+            var json = System.Text.Json.JsonDocument.Parse("\"100\"").RootElement;
+            var (filter, property) = Setup<ProductEntity>(nameof(ProductEntity.Stock), json);
+
+            Assert.Equal(100, ValueConverter.Convert(filter, property, null));
         }
 
         [Fact]

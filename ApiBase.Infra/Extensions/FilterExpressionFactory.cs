@@ -26,7 +26,7 @@ namespace ApiBase.Infra.Extensions
         /// <param name="right">Constant expression for the converted value (right side).</param>
         /// <param name="value">The already-converted value object.</param>
         /// <param name="query">The source queryable (used for type inference when needed).</param>
-        public static Expression Create(FilterModel filter, PropertyInfo property, Expression left, Expression right, object value, IQueryable query)
+        public static Expression Create(FilterModel filter, PropertyInfo property, Expression left, Expression right, object value, IQueryable? query)
         {
             switch (filter.GetOperator())
             {

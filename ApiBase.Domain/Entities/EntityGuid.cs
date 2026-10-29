@@ -4,20 +4,34 @@ namespace ApiBase.Domain.Entities
 {
     /// <summary>
     /// Base entity with a GUID primary key.
+    /// The Id is generated in the constructor and can only be changed by the entity itself,
+    /// so rich domain entities (protected constructor, private setters) work out of the box.
     /// To enable soft delete on a derived entity, implement <see cref="ApiBase.Domain.Interfaces.ISoftDelete"/>.
     /// </summary>
     /// <example>
-    /// public class Product : EntityGuid, ISoftDelete
+    /// public class Product : EntityGuid
     /// {
-    ///     public string Name { get; set; }
-    ///     public bool IsDeleted { get; set; }
-    ///     public DateTime? DeletedAt { get; set; }
+    ///     public string Name { get; private set; }
+    ///
+    ///     protected Product() { } // used by EF Core
+    ///
+    ///     public Product(string name) => Name = name;
     /// }
     /// </example>
-    public class EntityGuid
+    public abstract class EntityGuid
     {
         /// <summary>The unique identifier for this entity.</summary>
-        public Guid Id { get; set; }
+        public Guid Id { get; protected set; }
+
+        protected EntityGuid()
+        {
+            Id = Guid.NewGuid();
+        }
+
+        protected EntityGuid(Guid id)
+        {
+            Id = id == Guid.Empty ? Guid.NewGuid() : id;
+        }
 
         public override string ToString() => Id.ToString();
 
@@ -25,7 +39,7 @@ namespace ApiBase.Domain.Entities
         /// Returns the customization identifier defined via <see cref="DescriptionAttribute"/>,
         /// or null if not defined.
         /// </summary>
-        public string GetCustomizationIdentifier()
+        public string? GetCustomizationIdentifier()
         {
             object[] customAttributes = GetType().GetCustomAttributes(typeof(DescriptionAttribute), inherit: true);
 

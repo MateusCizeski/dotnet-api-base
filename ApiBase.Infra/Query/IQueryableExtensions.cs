@@ -15,7 +15,7 @@ namespace ApiBase.Infra.Query
 
             var selector = BuildSelector(typeof(T), propertyNames);
 
-            return source.Select(selector as Expression<Func<T, object>>);
+            return source.Select((Expression<Func<T, object>>)selector);
         }
 
         public static IQueryable<dynamic> SelectDynamic<T>(this IQueryable<T> source, string propertyNames)
@@ -44,7 +44,7 @@ namespace ApiBase.Infra.Query
             foreach (var kvp in dynamicProperties)
             {
                 var memberAccess = BuildMemberAccess(param, kvp.Key.Replace("_", "."));
-                bindings.Add(Expression.Bind(dynamicType.GetProperty(kvp.Key), memberAccess));
+                bindings.Add(Expression.Bind(dynamicType.GetProperty(kvp.Key)!, memberAccess));
             }
 
             var initializer = Expression.MemberInit(Expression.New(dynamicType), bindings);
@@ -73,11 +73,11 @@ namespace ApiBase.Infra.Query
             return (MemberExpression)body;
         }
 
-        private static PropertyInfo GetPropertyByPath(Type baseType, string path)
+        private static PropertyInfo? GetPropertyByPath(Type baseType, string path)
         {
             var parts = path.Split('.');
             var currentType = baseType;
-            PropertyInfo property = null;
+            PropertyInfo? property = null;
 
             foreach (var part in parts)
             {

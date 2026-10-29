@@ -1,27 +1,18 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<PackageId>ApiBase.Repository</PackageId>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<Description>
-			Generic EF Core repository for ApiBase. Implements IRepositoryBase with
-			full async support, automatic soft delete for ISoftDelete entities,
-			Update, and dynamic query composition. Includes base DbContext and
-			DI registration helpers.
+			Generic EF Core repository for ApiBase. Implements IRepositoryBase with async
+			support, soft delete through a global query filter, a base DbContext and the
+			DI registration (AddApiBaseCore).
 		</Description>
-		<IncludeSymbols>true</IncludeSymbols>
-		<NoWarn>$(NoWarn);1591</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <ProjectReference Include="..\ApiBase.Domain\ApiBase.Domain.csproj" />
-	  <ProjectReference Include="..\ApiBase.Infra\ApiBase.Infra.csproj" />
+		<ProjectReference Include="..\ApiBase.Domain\ApiBase.Domain.csproj" />
+		<ProjectReference Include="..\ApiBase.Infra\ApiBase.Infra.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,8 +1,10 @@
-﻿using ApiBase.Domain.Query;
+﻿using ApiBase.Domain.Exceptions;
+using ApiBase.Domain.Query;
 using System.Collections;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.Json;
 
 namespace ApiBase.Infra.Extensions
 {
@@ -15,74 +17,122 @@ namespace ApiBase.Infra.Extensions
     {
         /// <summary>
         /// Converts the filter's Value to the type expected by the target property.
-        /// Returns null if conversion fails or value is null.
+        /// Returns null only when the value itself is null.
         /// </summary>
+        /// <exception cref="InvalidQueryException">The value cannot be converted to the property type.</exception>
         public static object? Convert(FilterModel filter, PropertyInfo property, MemberExpression? memberExpr)
         {
-            var value = filter.Value;
+            var value = Unwrap(filter.Value);
 
-            if (value == null) return null;
+            if (value == null)
+            {
+                return null;
+            }
+
+            var targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
 
             try
             {
-                var targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-
                 if (value is IList list)
                 {
-                    return ConvertList(list, targetType);
+                    return ConvertList(list, targetType, property.PropertyType);
                 }
 
                 return ConvertScalar(value, targetType);
             }
-            catch
+            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException or ArgumentException)
             {
-                return null;
+                throw InvalidValue(filter, ex);
             }
         }
 
-        private static object? ConvertScalar(object value, Type targetType)
+        /// <summary>
+        /// Values deserialized with System.Text.Json arrive as <see cref="JsonElement"/>.
+        /// Arrays become a list (needed by In / InOrNull / ContainsAll); scalars become their text.
+        /// </summary>
+        private static object? Unwrap(object? value)
         {
+            if (value is not JsonElement element)
+            {
+                return value;
+            }
+
+            return element.ValueKind switch
+            {
+                JsonValueKind.Null or JsonValueKind.Undefined => null,
+                JsonValueKind.Array => element.EnumerateArray().Select(item => Unwrap(item)).ToList(),
+                JsonValueKind.String => element.GetString(),
+                _ => element.GetRawText()
+            };
+        }
+
+        private static object ConvertScalar(object value, Type targetType)
+        {
+            string text = value.ToString() ?? string.Empty;
+
             if (targetType == typeof(Guid))
             {
-                return Guid.TryParse(value.ToString(), out var guid) ? guid : (object?)null;
+                return Guid.Parse(text);
             }
 
             if (targetType == typeof(DateTime))
             {
-                return DateTime.TryParse(value.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : (object?)null;
+                return DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.None);
+            }
+
+            if (targetType == typeof(DateTimeOffset))
+            {
+                return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture);
             }
 
             if (targetType == typeof(bool))
             {
-                return bool.TryParse(value.ToString(), out var b) ? b : (object?)null;
+                return bool.Parse(text);
             }
 
             if (targetType.IsEnum)
             {
-                return Enum.Parse(targetType, value.ToString()!, ignoreCase: true);
+                return Enum.Parse(targetType, text, ignoreCase: true);
             }
 
             if (targetType == typeof(string))
             {
-                return value.ToString();
+                return text;
             }
 
             return System.Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
         }
 
-        private static object ConvertList(IList list, Type targetType)
+        /// <summary>
+        /// Builds a List typed with the property type (List&lt;int?&gt; for an int? property),
+        /// so the expression list.Contains(x.Property) finds the right Contains overload.
+        /// </summary>
+        private static object ConvertList(IList list, Type targetType, Type elementType)
         {
-            if (targetType == typeof(Guid))
+            var listType = typeof(List<>).MakeGenericType(elementType);
+            var result = (IList)Activator.CreateInstance(listType)!;
+
+            foreach (var item in list)
             {
-                return list.Cast<object>().Select(x => Guid.Parse(x.ToString()!)).ToList();
+                if (item == null)
+                {
+                    continue;
+                }
+
+                result.Add(ConvertScalar(item, targetType));
             }
 
-            if (targetType == typeof(string))
-            {
-                return list.Cast<object>().Select(x => x?.ToString() ?? string.Empty).ToList();
-            }
+            return result;
+        }
 
-            return list.Cast<object>().Select(x => System.Convert.ChangeType(x, targetType, CultureInfo.InvariantCulture)).ToList();
+        private static InvalidQueryException InvalidValue(FilterModel filter, Exception inner)
+        {
+            return new InvalidQueryException($"Value '{FormatValue(filter.Value)}' is not valid for '{filter.Property}'.", inner);
+        }
+
+        private static string FormatValue(object? value)
+        {
+            return value is JsonElement element ? element.GetRawText() : value?.ToString() ?? string.Empty;
         }
     }
 }

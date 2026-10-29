@@ -1,17 +1,17 @@
-﻿using ApiBase.Domain.Entities;
-using ApiBase.Domain.Interfaces;
+﻿using ApiBase.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
-using System.Reflection;
 
 namespace ApiBase.Infra.UnitOfWork
 {
     /// <summary>
     /// Coordinates persistence of changes across repositories within a single DbContext.
     /// Provides both sync and async commit/rollback with automatic entity validation and structured logging.
+    /// The DbContext is the same scoped instance the repositories use, and it is owned by the DI
+    /// container — this class never disposes it.
     /// </summary>
-    public class UnitOfWork : IUnitOfWork, IDisposable
+    public class UnitOfWork : IUnitOfWork
     {
         private readonly DbContext _dbContext;
         private readonly ILogger<UnitOfWork> _logger;
@@ -20,11 +20,6 @@ namespace ApiBase.Infra.UnitOfWork
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
-
-        public void Dispose()
-        {
-            _dbContext.Dispose();
         }
 
         // -------------------------
@@ -40,17 +35,11 @@ namespace ApiBase.Infra.UnitOfWork
                 var changes = _dbContext.SaveChanges();
                 _logger.LogDebug("Commit successful. {Changes} record(s) affected.", changes);
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex) when (ex is DbUpdateException or ValidationException)
             {
-                _logger.LogError(ex, "Commit failed due to a database update error.");
+                _logger.LogError(ex, "Commit failed. Tracked changes will be reverted.");
                 RollbackChanges();
-                throw new DbUpdateException("Database update failed: " + ex.GetBaseException().Message, ex);
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogError(ex, "Commit failed due to a validation error.");
-                RollbackChanges();
-                throw new ValidationException("Validation failed: " + ex.Message, ex.ValidationAttribute, ex.Value);
+                throw;
             }
         }
 
@@ -84,25 +73,19 @@ namespace ApiBase.Infra.UnitOfWork
         // -------------------------
 
         /// <inheritdoc/>
-        public async Task CommitAsync()
+        public async Task CommitAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 ValidateEntities();
-                var changes = await _dbContext.SaveChangesAsync();
+                var changes = await _dbContext.SaveChangesAsync(cancellationToken);
                 _logger.LogDebug("CommitAsync successful. {Changes} record(s) affected.", changes);
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex) when (ex is DbUpdateException or ValidationException)
             {
-                _logger.LogError(ex, "CommitAsync failed due to a database update error.");
+                _logger.LogError(ex, "CommitAsync failed. Tracked changes will be reverted.");
                 await RollbackChangesAsync();
-                throw new DbUpdateException("Database update failed: " + ex.GetBaseException().Message, ex);
-            }
-            catch (ValidationException ex)
-            {
-                _logger.LogError(ex, "CommitAsync failed due to a validation error.");
-                await RollbackChangesAsync();
-                throw new ValidationException("Validation failed: " + ex.Message, ex.ValidationAttribute, ex.Value);
+                throw;
             }
         }
 
@@ -112,40 +95,6 @@ namespace ApiBase.Infra.UnitOfWork
             // EF Core's ChangeTracker rollback is synchronous — wrapped in Task for interface consistency
             RollbackChanges();
             return Task.CompletedTask;
-        }
-
-        // -------------------------
-        // Custom fields
-        // -------------------------
-
-        /// <inheritdoc/>
-        public IList<object> BuildCustomFieldsList<T>(List<object> pagedResults) where T : EntityGuid, new()
-        {
-            return pagedResults.Select(obj => MergeCustomFields<T>(obj)).ToList();
-        }
-
-        /// <inheritdoc/>
-        public object BuildCustomFieldsList<T>(object result) where T : EntityGuid, new()
-        {
-            return MergeCustomFields<T>(result);
-        }
-
-        private object MergeCustomFields<T>(object source) where T : EntityGuid, new()
-        {
-            if (source is IDictionary<string, object> dict)
-            {
-                return new Dictionary<string, object>(dict);
-            }
-
-            var target = new Dictionary<string, object>();
-            var props = source.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            foreach (var prop in props)
-            {
-                target[prop.Name] = prop.GetValue(source);
-            }
-
-            return target;
         }
 
         // -------------------------

@@ -1,16 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<NoWarn>$(NoWarn);1591</NoWarn>
 		<PackageId>ApiBase.Infra</PackageId>
-		<IncludeSymbols>true</IncludeSymbols>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<Description>
-			Infrastructure engine for ApiBase. Provides dynamic filter expressions
-			via expression trees, runtime type projection with Reflection.Emit,
-			Unit of Work with async support and structured logging, and EF Core
-			query helpers for pagination, sorting and field projection.
+			Query engine for ApiBase. Builds dynamic filters and sorting with expression
+			trees, projects to views or runtime types (Reflection.Emit), paginates with a
+			configurable page size limit and provides an EF Core Unit of Work.
 		</Description>
 	</PropertyGroup>
 
@@ -18,10 +14,11 @@
 		<PackageReference Include="Microsoft.EntityFrameworkCore" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Options" />
 	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ApiBase.Domain\ApiBase.Domain.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\ApiBase.Domain\ApiBase.Domain.csproj" />
+	</ItemGroup>
 
 </Project>

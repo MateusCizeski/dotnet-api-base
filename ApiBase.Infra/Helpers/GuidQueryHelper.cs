@@ -2,42 +2,69 @@
 using ApiBase.Domain.Query;
 using ApiBase.Domain.View;
 using ApiBase.Infra.Extensions;
+using ApiBase.Infra.Options;
 using ApiBase.Infra.Query;
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 namespace ApiBase.Infra.Helpers
 {
     /// <summary>
-    /// Provides query execution helpers for paginated, filtered and projected results
-    /// over entities that implement <see cref="EntityGuid"/>.
+    /// Runs the read pipeline used by the list endpoints:
+    /// validate (allow list) → filter and sort on the entity → project to the view →
+    /// shape the requested fields → count → paginate.
     /// </summary>
     public class GuidQueryHelper
     {
+        private readonly ApiBaseOptions _options;
+
+        public GuidQueryHelper(ApiBaseOptions? options = null)
+        {
+            _options = options ?? new ApiBaseOptions();
+        }
+
         /// <summary>
-        /// Executes a full query pipeline: filter → project → shape fields → paginate.
+        /// Executes the full pipeline synchronously. Prefer <see cref="PageAsync{T, TView}"/> in web requests.
         /// </summary>
         public GetView Page<T, TView>(IQueryable<T> query, QueryParams queryParams) where T : EntityGuid where TView : IdGuidView, new()
         {
-            IQueryable<T> filtered = ApplyQuery(query, queryParams);
-            IQueryable<TView> projected = filtered.Project().To<TView>();
-            IQueryable<object> shaped = ApplyFields(projected, queryParams);
+            var (filtered, shaped) = BuildViewPipeline<T, TView>(query, queryParams);
 
             return new GetView
             {
-                Total = shaped.Count(),
-                Content = ExecutePagination(shaped, queryParams)
+                Total = filtered.Count(),
+                Content = ApplyPagination(shaped, queryParams).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Executes the full pipeline asynchronously (CountAsync / ToListAsync on the EF Core provider).
+        /// </summary>
+        public async Task<GetView> PageAsync<T, TView>(IQueryable<T> query, QueryParams queryParams, CancellationToken cancellationToken = default) where T : EntityGuid where TView : IdGuidView, new()
+        {
+            var (filtered, shaped) = BuildViewPipeline<T, TView>(query, queryParams);
+
+            int total = await filtered.CountAsync(cancellationToken);
+            List<object> content = await ApplyPagination(shaped, queryParams).ToListAsync(cancellationToken);
+
+            return new GetView
+            {
+                Total = total,
+                Content = content
             };
         }
 
         /// <summary>
         /// Executes a query pipeline without view projection (returns T directly).
+        /// No allow list is applied: use it only with queryables whose properties are all safe to expose.
         /// </summary>
         public GetView Page<T>(IQueryable<T> query, QueryParams queryParams) where T : class => Page(query, queryParams, null);
 
         /// <summary>
         /// Executes a query pipeline with an optional additional predicate.
+        /// No allow list is applied: use it only with queryables whose properties are all safe to expose.
         /// </summary>
-        public GetView Page<T>(IQueryable<T> query, QueryParams queryParams, Expression<Func<T, bool>> predicate) where T : class
+        public GetView Page<T>(IQueryable<T> query, QueryParams queryParams, Expression<Func<T, bool>>? predicate) where T : class
         {
             if (predicate != null)
             {
@@ -49,8 +76,8 @@ namespace ApiBase.Infra.Helpers
 
             return new GetView
             {
-                Total = shaped.Count(),
-                Content = ExecutePagination(shaped, queryParams)
+                Total = query.Count(),
+                Content = ApplyPagination(shaped, queryParams).ToList()
             };
         }
 
@@ -66,13 +93,17 @@ namespace ApiBase.Infra.Helpers
         }
 
         /// <summary>
-        /// Executes pagination based on Page and Limit from <paramref name="queryParams"/>.
+        /// Applies Skip/Take based on Page (1-based) or Start (0-based offset) and Limit.
+        /// Limit is clamped to <see cref="ApiBaseOptions.MaxPageSize"/>.
         /// </summary>
-        public List<T> ExecutePagination<T>(IQueryable<T> query, QueryParams queryParams)
+        public IQueryable<T> ApplyPagination<T>(IQueryable<T> query, QueryParams queryParams)
         {
-            int page = Math.Max(1, queryParams.Page.GetValueOrDefault(1));
-            int limit = Math.Max(1, queryParams.Limit.GetValueOrDefault(25));
-            return query.Skip((page - 1) * limit).Take(limit).ToList();
+            int limit = _options.ResolvePageSize(queryParams.Limit);
+            long offset = queryParams.Page.HasValue || !queryParams.Start.HasValue
+                ? (long)(Math.Max(1, queryParams.Page ?? 1) - 1) * limit
+                : Math.Max(0, queryParams.Start.Value);
+
+            return query.Skip((int)Math.Min(offset, int.MaxValue)).Take(limit);
         }
 
         /// <summary>
@@ -86,11 +117,12 @@ namespace ApiBase.Infra.Helpers
 
         /// <summary>
         /// Resolves the sort list from query params, defaulting to ascending Id if none provided.
+        /// A stable order is required for pagination to return consistent pages.
         /// </summary>
         public List<SortModel> BuildOrderBy<T>(QueryParams queryParams)
         {
             var sortList = queryParams.GetSort();
-            
+
             if (sortList != null && sortList.Count > 0)
             {
                 return sortList;
@@ -120,6 +152,17 @@ namespace ApiBase.Infra.Helpers
             }
 
             return query.Cast<object>();
+        }
+
+        private (IQueryable<T> Filtered, IQueryable<object> Shaped) BuildViewPipeline<T, TView>(IQueryable<T> query, QueryParams queryParams) where T : EntityGuid where TView : IdGuidView, new()
+        {
+            QueryAllowList.Validate(queryParams.GetFilters(), queryParams.GetSort(), typeof(TView));
+
+            IQueryable<T> filtered = ApplyQuery(query, queryParams);
+            IQueryable<TView> projected = filtered.Project().To<TView>();
+            IQueryable<object> shaped = ApplyFields(projected, queryParams);
+
+            return (filtered, shaped);
         }
     }
 }

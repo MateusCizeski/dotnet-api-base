@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ApiBase.Domain.Interfaces
+﻿namespace ApiBase.Domain.Interfaces
 {
     /// <summary>
     /// Marks an entity as soft-deletable.
     /// Entities implementing this interface are never physically removed from the database.
     /// Instead, <see cref="IsDeleted"/> is set to true and <see cref="DeletedAt"/> is recorded.
-    /// The base repository and application layer automatically filter out soft-deleted records.
+    /// A global EF Core query filter hides soft-deleted records from every query,
+    /// including navigations loaded with Include. Use IgnoreQueryFilters() to see them.
     /// </summary>
     public interface ISoftDelete
     {

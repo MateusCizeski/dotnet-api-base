@@ -17,7 +17,7 @@ namespace ApiBase.Domain.Query
         /// <summary>
         /// The deserialized list of filter conditions in this group.
         /// </summary>
-        public List<FilterModel> Filters { get; set; }
+        public List<FilterModel> Filters { get; set; } = [];
 
         /// <summary>
         /// Whether this group combines with the next using AND (true) or OR (false). Defaults to AND.

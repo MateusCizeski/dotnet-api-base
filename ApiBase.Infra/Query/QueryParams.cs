@@ -1,4 +1,5 @@
-﻿using ApiBase.Domain.Query;
+﻿using ApiBase.Domain.Exceptions;
+using ApiBase.Domain.Query;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -7,18 +8,24 @@ namespace ApiBase.Infra.Query
     /// <summary>
     /// Query parameters for paginated, filtered and sorted requests.
     /// All properties follow JSON camelCase convention via JsonPropertyName attributes.
+    /// Malformed JSON in filter or sort throws <see cref="InvalidQueryException"/> (HTTP 400).
     /// </summary>
+    /// <remarks>
+    /// There is no "includes" parameter: the projection to the view already reads the navigation
+    /// properties the view declares, and letting the client choose what to load would expose
+    /// any navigation of the entity.
+    /// </remarks>
     public class QueryParams : QueryField
     {
         /// <summary>Current page number (1-based).</summary>
         [JsonPropertyName("page")]
         public int? Page { get; set; }
 
-        /// <summary>Zero-based start index (alternative to Page).</summary>
+        /// <summary>Zero-based start index (alternative to Page; used only when Page is not sent).</summary>
         [JsonPropertyName("start")]
         public int? Start { get; set; }
 
-        /// <summary>Maximum number of records per page. Defaults to 25.</summary>
+        /// <summary>Maximum number of records per page. Defaults to 25 and is capped by ApiBaseOptions.MaxPageSize.</summary>
         [JsonPropertyName("limit")]
         public int? Limit { get; set; }
 
@@ -36,33 +43,6 @@ namespace ApiBase.Infra.Query
         /// </summary>
         [JsonPropertyName("filter")]
         public string? Filter { get; set; }
-
-        /// <summary>
-        /// JSON array of navigation properties to eager-load.
-        /// Example: ["Address","Orders"]
-        /// </summary>
-        [JsonPropertyName("includes")]
-        public string? Includes { get; set; }
-
-        /// <summary>
-        /// Returns the list of navigation properties to eager-load.
-        /// </summary>
-        public List<string> GetIncludes()
-        {
-            if (string.IsNullOrWhiteSpace(Includes))
-            {
-                return [];
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<List<string>>(Includes) ?? [];
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Error deserializing 'includes': '{Includes}'.", ex);
-            }
-        }
 
         /// <summary>
         /// Creates a QueryParams pre-configured to retrieve a single record by Id.
@@ -87,7 +67,7 @@ namespace ApiBase.Infra.Query
         /// Deserializes the filter string into a list of FilterGroups.
         /// Supports both flat (array of FilterModel) and grouped (array of FilterGroup) formats.
         /// </summary>
-        public List<FilterGroup> GetFilters()
+        public List<FilterGroup>? GetFilters()
         {
             if (string.IsNullOrWhiteSpace(Filter))
             {
@@ -98,44 +78,48 @@ namespace ApiBase.Infra.Query
             {
                 if (IsGroupedFormat(Filter))
                 {
-                    var groups = JsonSerializer.Deserialize<List<FilterGroup>>(Filter);
+                    var groups = JsonSerializer.Deserialize<List<FilterGroup>>(Filter, JsonOptions) ?? [];
 
                     foreach (var group in groups)
                     {
                         if (!string.IsNullOrWhiteSpace(group.Filter))
-                            group.Filters = JsonSerializer.Deserialize<List<FilterModel>>(group.Filter);
+                        {
+                            group.Filters = JsonSerializer.Deserialize<List<FilterModel>>(group.Filter, JsonOptions) ?? [];
+                        }
                     }
 
                     return groups;
                 }
 
-                var filters = JsonSerializer.Deserialize<List<FilterModel>>(Filter);
+                var filters = JsonSerializer.Deserialize<List<FilterModel>>(Filter, JsonOptions) ?? [];
                 return new List<FilterGroup>
                 {
                     new FilterGroup { Filters = filters }
                 };
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                throw new InvalidOperationException($"Error deserializing filter string: '{Filter}'.", ex);
+                throw new InvalidQueryException("The 'filter' parameter is not a valid JSON array of filters.", ex);
             }
         }
 
         /// <summary>
         /// Deserializes the sort string into a list of SortModels.
         /// </summary>
-        public List<SortModel> GetSort()
+        public List<SortModel>? GetSort()
         {
             if (string.IsNullOrWhiteSpace(Sort))
+            {
                 return null;
+            }
 
             try
             {
-                return JsonSerializer.Deserialize<List<SortModel>>(Sort);
+                return JsonSerializer.Deserialize<List<SortModel>>(Sort, JsonOptions);
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                throw new InvalidOperationException($"Error deserializing sort string: '{Sort}'.", ex);
+                throw new InvalidQueryException("The 'sort' parameter is not a valid JSON array of sort descriptors.", ex);
             }
         }
 
@@ -147,10 +131,10 @@ namespace ApiBase.Infra.Query
         {
             try
             {
-                var groups = JsonSerializer.Deserialize<List<FilterGroup>>(json);
+                var groups = JsonSerializer.Deserialize<List<FilterGroup>>(json, JsonOptions);
                 return groups != null && groups.Count > 0 && groups[0].Filter != null;
             }
-            catch
+            catch (JsonException)
             {
                 return false;
             }

@@ -1,22 +1,21 @@
 #!/bin/bash
 
 # =============================================================================
-# publish.sh — Build and publish all ApiBase NuGet packages
+# publish.sh — Build, test and publish all ApiBase NuGet packages (manual fallback).
 #
-# Usage:
-#   ./publish.sh <api-key> [version]
+# Prefer the GitHub Actions release (push a tag v*): it runs the tests and uses
+# Trusted Publishing, with no API key on your machine.
 #
-# Examples:
-#   ./publish.sh oy2abc...xyz
-#   ./publish.sh oy2abc...xyz 2.1.0
+# Usage (the key comes from an environment variable, never from an argument,
+# so it does not stay in the shell history):
+#   read -s NUGET_API_KEY && export NUGET_API_KEY
+#   ./publish.sh
 #
-# If version is provided, it updates all .csproj files before packing.
+# The version comes from Directory.Build.props (<Version>).
 # =============================================================================
 
-set -e
+set -euo pipefail
 
-API_KEY=$1
-VERSION=$2
 NUGET_SOURCE="https://api.nuget.org/v3/index.json"
 
 PACKAGES=(
@@ -27,105 +26,35 @@ PACKAGES=(
   "ApiBase.Controller"
 )
 
-# -------------------------
-# Validation
-# -------------------------
-
-if [ -z "$API_KEY" ]; then
-  echo "❌  Error: API key is required."
-  echo ""
-  echo "Usage: ./publish.sh <api-key> [version]"
+if [ -z "${NUGET_API_KEY:-}" ]; then
+  echo "Error: set the NUGET_API_KEY environment variable first (read -s NUGET_API_KEY && export NUGET_API_KEY)."
   exit 1
 fi
 
-# -------------------------
-# Optional: bump version
-# -------------------------
-
-if [ -n "$VERSION" ]; then
-  echo "🔖  Bumping version to $VERSION in all .csproj files..."
-  for PACKAGE in "${PACKAGES[@]}"; do
-    CSPROJ="$PACKAGE/$PACKAGE.csproj"
-    if [ -f "$CSPROJ" ]; then
-      sed -i "s|<Version>.*</Version>|<Version>$VERSION</Version>|g" "$CSPROJ"
-      echo "    ✔ $CSPROJ updated"
-    else
-      echo "    ⚠  $CSPROJ not found, skipping"
-    fi
-  done
-  echo ""
-fi
-
-# -------------------------
-# Clean previous artifacts
-# -------------------------
-
-echo "🧹  Cleaning previous build artifacts..."
-for PACKAGE in "${PACKAGES[@]}"; do
-  rm -rf "$PACKAGE/bin" "$PACKAGE/obj"
-done
+echo "Cleaning previous artifacts..."
 rm -rf ./nupkgs
 mkdir ./nupkgs
-echo ""
 
-# -------------------------
-# Restore
-# -------------------------
+echo "Restoring, building and testing in Release..."
+dotnet restore ApiBase.Core.sln
+dotnet build ApiBase.Core.sln -c Release --no-restore
+dotnet test ApiBase.Core.sln -c Release --no-build
 
-echo "🔄  Restoring solution..."
-dotnet restore
-echo ""
-
-# -------------------------
-# Build
-# -------------------------
-
-echo "🔨  Building solution in Release..."
-dotnet build -c Release --no-restore
-echo ""
-
-# -------------------------
-# Pack
-# -------------------------
-
-echo "📦  Packing all packages..."
+echo "Packing..."
 for PACKAGE in "${PACKAGES[@]}"; do
-  echo "    → $PACKAGE"
-  dotnet pack "$PACKAGE/$PACKAGE.csproj" \
-    -c Release \
-    --no-build \
-    -o ./nupkgs
+  dotnet pack "$PACKAGE/$PACKAGE.csproj" -c Release --no-build -o ./nupkgs
 done
-echo ""
 
-# -------------------------
-# Publish
-# -------------------------
-
-echo "🚀  Publishing to NuGet..."
-PUBLISHED=0
+echo "Publishing to NuGet..."
 FAILED=0
-
 for NUPKG in ./nupkgs/*.nupkg; do
-  FILENAME=$(basename "$NUPKG")
-  echo "    Pushing $FILENAME..."
-
-  if dotnet nuget push "$NUPKG" \
-      --api-key "$API_KEY" \
-      --source "$NUGET_SOURCE" \
-      --skip-duplicate; then
-    echo "    ✔ $FILENAME published"
-    PUBLISHED=$((PUBLISHED + 1))
+  if dotnet nuget push "$NUPKG" --api-key "$NUGET_API_KEY" --source "$NUGET_SOURCE" --skip-duplicate; then
+    echo "  published $(basename "$NUPKG")"
   else
-    echo "    ✖ $FILENAME failed"
+    echo "  FAILED $(basename "$NUPKG")"
     FAILED=$((FAILED + 1))
   fi
 done
-
-echo ""
-echo "============================================="
-echo "  Done: $PUBLISHED published, $FAILED failed"
-echo "============================================="
 
 if [ $FAILED -gt 0 ]; then
   exit 1

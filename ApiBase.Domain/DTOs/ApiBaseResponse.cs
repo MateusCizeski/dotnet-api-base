@@ -6,10 +6,10 @@
     public class ApiBaseResponse
     {
         /// <summary>The response payload. May be a typed object, list or dynamic projection.</summary>
-        public object Content { get; set; }
+        public object? Content { get; set; }
 
         /// <summary>Human-readable message describing the result of the operation.</summary>
-        public string Message { get; set; }
+        public string? Message { get; set; }
 
         /// <summary>Indicates whether the request completed successfully.</summary>
         public bool Success { get; set; }
@@ -25,7 +25,7 @@
         /// Optional error type identifier, e.g. "AppError404".
         /// Useful for client-side error handling without parsing the message.
         /// </summary>
-        public string ErrorType { get; set; }
+        public string? ErrorType { get; set; }
 
         public ApiErrorResponse()
         {
@@ -60,7 +60,7 @@
         /// The records for the current page.
         /// May be an IQueryable, materialized list or dynamic projection depending on the pipeline stage.
         /// </summary>
-        public object Content { get; set; }
+        public object? Content { get; set; }
 
         /// <summary>Total number of records matching the query, before pagination.</summary>
         public int Total { get; set; }
@@ -74,7 +74,7 @@
     public class QueryExecutionDTO
     {
         /// <summary>The composed query, ready for pagination or further filtering.</summary>
-        public IQueryable<object> Data { get; set; }
+        public IQueryable<object> Data { get; set; } = Enumerable.Empty<object>().AsQueryable();
 
         /// <summary>Total record count before pagination.</summary>
         public int Total { get; set; }

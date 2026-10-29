@@ -1,15 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<NoWarn>$(NoWarn);1591</NoWarn>
 		<PackageId>ApiBase.Domain</PackageId>
-		<IncludeSymbols>true</IncludeSymbols>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageTags>aspnetcore;webapi;boilerplate;efcore;repository;repository-pattern;unitofwork;dbcontext;crud;generic-repository;api-core;soft-delete;expression-trees;dynamic-filter;pagination</PackageTags>
 		<Description>
 			Core contracts and domain primitives for ApiBase. Defines EntityGuid,
-			ISoftDelete, IRepositoryBase, IUnitOfWork, IApplicationGuid and query
-			models (FilterModel, SortModel, QueryParams) with zero external dependencies.
+			ISoftDelete, IRepositoryBase, IUnitOfWork, the query models (FilterModel,
+			SortModel, FilterGroup) and the query exceptions, with zero external dependencies.
 		</Description>
 	</PropertyGroup>
 

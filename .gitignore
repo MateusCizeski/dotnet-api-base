@@ -91,3 +91,6 @@ project.nuget.cache
 
 # Outros temporários
 [Tt]emp/
+
+# Pacotes gerados pelo publish.sh / release
+nupkgs/

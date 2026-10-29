@@ -15,6 +15,6 @@
         /// The records for the current page, as a list of objects.
         /// Each item may be a typed view, a dynamic projection, or a dictionary depending on the query.
         /// </summary>
-        public IList<object> Content { get; set; }
+        public IList<object> Content { get; set; } = [];
     }
 }

@@ -8,22 +8,17 @@
     <!-- EF Core: todos na mesma versão -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
-
-    <!-- Provider do Postgres: série 10.x -->
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.14" />
 
     <!-- ASP.NET -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.19.2" />
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 
     <!-- Testes -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />

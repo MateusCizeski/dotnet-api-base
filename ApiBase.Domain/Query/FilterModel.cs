@@ -1,4 +1,5 @@
-﻿using ApiBase.Domain.Enums;
+using ApiBase.Domain.Enums;
+using ApiBase.Domain.Exceptions;
 using System.Text.Json.Serialization;
 
 namespace ApiBase.Domain.Query
@@ -25,13 +26,13 @@ namespace ApiBase.Domain.Query
         /// Dot-notation property path to filter on. Example: "Address.City"
         /// </summary>
         [JsonPropertyName("property")]
-        public string Property { get; set; }
+        public string Property { get; set; } = string.Empty;
 
         /// <summary>
         /// The value to compare against.
         /// </summary>
         [JsonPropertyName("value")]
-        public object Value { get; set; }
+        public object? Value { get; set; }
 
         /// <summary>
         /// String representation of the operator, used when deserializing from JSON.
@@ -41,8 +42,10 @@ namespace ApiBase.Domain.Query
         public string OperatorString { get; set; } = OpEquals;
 
         /// <summary>
-        /// Strongly-typed operator. Takes priority over <see cref="OperatorString"/> when set.
+        /// Strongly-typed operator for filters built in code. Takes priority over <see cref="OperatorString"/> when set.
+        /// Not read from JSON: clients send the "operator" string.
         /// </summary>
+        [JsonIgnore]
         public FilterOperator? Operator { get; set; }
 
         /// <summary>Whether this filter combines with the next using AND (true) or OR (false).</summary>
@@ -93,7 +96,7 @@ namespace ApiBase.Domain.Query
                 OpStartsWith => FilterOperator.StartsWith,
                 OpEndsWith => FilterOperator.EndsWith,
                 OpInOrNull => FilterOperator.InOrNull,
-                _ => throw new NotSupportedException($"Unknown filter operator: '{OperatorString}'"),
+                _ => throw new InvalidQueryException($"Unknown filter operator: '{OperatorString}'."),
             };
         }
     }

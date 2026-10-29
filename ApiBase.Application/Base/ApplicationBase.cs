@@ -1,6 +1,5 @@
 ﻿using ApiBase.Domain.Entities;
 using ApiBase.Domain.Interfaces;
-using ApiBase.Infra.UnitOfWork;
 using Microsoft.Extensions.Logging;
 
 namespace ApiBase.Application.Base
@@ -8,8 +7,10 @@ namespace ApiBase.Application.Base
     /// <summary>
     /// Base application service providing access to the unit of work, repository and logger.
     /// All application services should inherit from this class.
+    /// There is no <c>new()</c> constraint on the entity: rich domain entities with
+    /// protected constructors are supported.
     /// </summary>
-    public class ApplicationBase<TEntity, TRepository> where TEntity : EntityGuid, new() where TRepository : IRepositoryBase<TEntity>
+    public class ApplicationBase<TEntity, TRepository> where TEntity : EntityGuid where TRepository : IRepositoryBase<TEntity>
     {
         protected IUnitOfWork UnitOfWork { get; }
         protected TRepository Repository { get; }
@@ -29,9 +30,9 @@ namespace ApiBase.Application.Base
         }
 
         /// <summary>Persists all pending changes asynchronously.</summary>
-        protected Task CommitAsync()
+        protected Task CommitAsync(CancellationToken cancellationToken = default)
         {
-            return UnitOfWork.CommitAsync();
+            return UnitOfWork.CommitAsync(cancellationToken);
         }
 
         /// <summary>Discards all pending changes synchronously.</summary>
